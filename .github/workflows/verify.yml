@@ -20,21 +20,17 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - name: Set up Workspace Environment Variable
         run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Cache Maven dependencies
+      - name: Cache Maven and p2 dependencies
         uses: actions/cache@v4
         with:
-          path: /home/runner/.m2/repository
-          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
+          path: |
+            /home/runner/.m2/repository
+            /home/runner/.m2/build-cache
+            /home/runner/.p2
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml', 'ddk-target/*.target') }}
       - name: Compile with Maven
         run: mvn clean compile -f ./ddk-parent/pom.xml --batch-mode -T3C
-      - name: Upload compiled artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: compiled-classes
-          path: |
-            **/target/classes
-            **/target/generated-sources
-          retention-days: 1
+      # No artifact upload needed when using Maven build cache
 
   # test:
   #   needs: compile
@@ -108,11 +104,14 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - name: Set up Workspace Environment Variable
         run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Cache Maven dependencies
+      - name: Cache Maven and p2 dependencies
         uses: actions/cache@v4
         with:
-          path: /home/runner/.m2/repository
-          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
+          path: |
+            /home/runner/.m2/repository
+            /home/runner/.m2/build-cache
+            /home/runner/.p2
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml', 'ddk-target/*.target') }}
       - name: Run ${{ matrix.tool }}
         run: |
           case "${{ matrix.tool }}" in
@@ -140,18 +139,16 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - name: Set up Workspace Environment Variable
         run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Cache Maven dependencies
+      - name: Cache Maven and p2 dependencies
         uses: actions/cache@v4
         with:
-          path: /home/runner/.m2/repository
-          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
-      - name: Download compiled artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: compiled-classes
-          path: .
+          path: |
+            /home/runner/.m2/repository
+            /home/runner/.m2/build-cache
+            /home/runner/.p2
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml', 'ddk-target/*.target') }}
       - name: Run SpotBugs
-        run: mvn spotbugs:check -f ./ddk-parent/pom.xml --batch-mode -T2C
+        run: mvn clean compile spotbugs:check -f ./ddk-parent/pom.xml --batch-mode -T3C
 
   integration-tests:
     needs: compile
@@ -169,16 +166,14 @@ jobs:
           java-version: ${{ env.JAVA_VERSION }}
       - name: Set up Workspace Environment Variable
         run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Cache Maven dependencies
+      - name: Cache Maven and p2 dependencies
         uses: actions/cache@v4
         with:
-          path: /home/runner/.m2/repository
-          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
-      - name: Download compiled artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: compiled-classes
-          path: .
+          path: |
+            /home/runner/.m2/repository
+            /home/runner/.m2/build-cache
+            /home/runner/.p2
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml', 'ddk-target/*.target') }}
       - name: Run integration tests with Maven within a virtual X Server Environment
         run: xvfb-run mvn verify -f ./ddk-parent/pom.xml --batch-mode --fail-at-end -T1C
       - name: Archive Tycho Surefire Plugin
