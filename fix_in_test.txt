@@ -1,0 +1,180 @@
+41563 [WorkbenchTestable] ERROR org.eclipse.xtext.builder.BuilderParticipant -
+        Error during compilation
+            of 'platform:/resource/TEST/ExportScopingTest.export'.java.lang
+                .IllegalArgumentException : fromIndex(3) >
+    toIndex(2) at java.base /
+        java.util.AbstractList
+            .subListRangeCheck(AbstractList.java : 511) at java.base
+        / java.util.AbstractList.subList(AbstractList.java : 499) at java.base /
+        java.util.Collections$UnmodifiableRandomAccessList
+            .subList(Collections.java : 1594) at com.avaloq.tools.ddk.xtext
+            .export.generator.ExportGeneratorX
+            .getExportedNamesProvider(ExportGeneratorX.java : 80) at com.avaloq
+            .tools.ddk.xtext.export.generator.ExportGenerator
+            .generateExportedNamesProvider(ExportGenerator.java : 101) at com
+            .avaloq.tools.ddk.xtext.export.generator.ExportGenerator
+            .lambda$0(ExportGenerator.java : 89) at com.avaloq.tools.ddk.xtext
+            .expression.generator.GeneratorSupport
+            .executeWithProjectResourceLoader(GeneratorSupport.java : 56) at com
+            .avaloq.tools.ddk.xtext.export.generator.ExportGenerator
+            .doGenerate(ExportGenerator.java
+                        : 97) at org.eclipse.xtext.generator.GeneratorDelegate
+            .doGenerate(GeneratorDelegate.java
+                        : 44) at org.eclipse.xtext.generator.GeneratorDelegate
+            .generate(GeneratorDelegate.java
+                      : 35) at org.eclipse.xtext.builder.BuilderParticipant
+            .handleChangedContents(BuilderParticipant.java : 597) at org.eclipse
+            .xtext.builder.BuilderParticipant
+            .handleChangedContents(BuilderParticipant.java
+                                   : 578) at org.eclipse.xtext.builder
+            .BuilderParticipant.doGenerate(BuilderParticipant.java
+                                           : 563) at org.eclipse.xtext.builder
+            .BuilderParticipant.doBuild(BuilderParticipant.java
+                                        : 303) at org.eclipse.xtext.builder
+            .BuilderParticipant.build(BuilderParticipant.java
+                                      : 265) at org.eclipse.xtext.builder.impl
+            .RegistryBuilderParticipant$DeferredBuilderParticipant
+            .build(RegistryBuilderParticipant.java : 164) at org.eclipse.xtext
+            .builder.impl.RegistryBuilderParticipant
+            .build(RegistryBuilderParticipant.java
+                   : 70) at org.eclipse.xtext.builder.impl.XtextBuilder
+            .doBuild(XtextBuilder.java
+                     : 520) at org.eclipse.xtext.builder.impl.XtextBuilder
+            .addInfosFromTaskAndBuild(XtextBuilder.java
+                                      : 450) at org.eclipse.xtext.builder.impl
+            .XtextBuilder.fullBuild(XtextBuilder.java
+                                    : 557) at org.eclipse.xtext.builder.impl
+            .XtextBuilder.build(XtextBuilder.java : 328) at org.eclipse.core
+            .internal.events.BuildManager$2.run(BuildManager.java : 1077) at org
+            .eclipse.core.runtime.SafeRunner.run(SafeRunner.java : 47) at org
+            .eclipse.core.internal.events.BuildManager
+            .basicBuild(BuildManager.java : 296) at org.eclipse.core.internal
+            .events.BuildManager.basicBuild(BuildManager.java
+                                            : 352) at org.eclipse.core.internal
+            .events.BuildManager$1.run(BuildManager.java : 441) at org.eclipse
+            .core.runtime.SafeRunner.run(SafeRunner.java
+                                         : 47) at org.eclipse.core.internal
+            .events.BuildManager.basicBuild(BuildManager.java
+                                            : 444) at org.eclipse.core.internal
+            .events.BuildManager.basicBuildLoop(BuildManager.java : 555) at org
+            .eclipse.core.internal.events.BuildManager
+            .basicBuildLoop(BuildManager.java
+                            : 503) at org.eclipse.core.internal.events
+            .BuildManager.build(BuildManager.java
+                                : 585) at org.eclipse.core.internal.resources
+            .Workspace.buildInternal(Workspace.java : 601) at org.eclipse.core
+            .internal.resources.Workspace.build(Workspace.java : 490) at org
+            .eclipse.xtext.ui.testing.util.IResourcesSetupUtil
+            .waitForBuild(IResourcesSetupUtil.java : 426) at org.eclipse.xtext
+            .ui.testing.util.IResourcesSetupUtil
+            .waitForBuild(IResourcesSetupUtil.java : 391) at com.avaloq.tools
+            .ddk.xtext.test.XtextTestProjectManager
+            .build(XtextTestProjectManager.java
+                   : 74) at com.avaloq.tools.ddk.xtext.test.AbstractTest
+            .beforeAllTests(AbstractTest.java : 184) at com.avaloq.tools.ddk
+            .xtext.test.scoping.AbstractScopingTest
+            .beforeAllTests(AbstractScopingTest.java : 133) at com.avaloq.tools
+            .ddk.xtext.test.AbstractTest.setUp(AbstractTest.java
+                                               : 134) at java.base
+        /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base
+        /
+        java.lang.reflect.Method.invoke(Method.java : 580) at org.junit.runners
+            .model.FrameworkMethod$1
+            .runReflectiveCall(FrameworkMethod.java
+                               : 59) at org.junit.internal.runners.model
+            .ReflectiveCallable.run(ReflectiveCallable.java
+                                    : 12) at org.junit.runners.model
+            .FrameworkMethod.invokeExplosively(FrameworkMethod.java : 56) at org
+            .junit.internal.runners.statements.RunBefores
+            .invokeMethod(RunBefores.java : 33) at org.junit.internal.runners
+            .statements.RunBefores.evaluate(RunBefores.java
+                                            : 24) at org.junit.internal.runners
+            .statements.RunAfters.evaluate(RunAfters.java : 27) at org.junit
+            .rules.TestWatcher$1.evaluate(TestWatcher.java : 61) at org.junit
+            .runners.ParentRunner$3.evaluate(ParentRunner.java : 306) at org
+            .junit.runners.BlockJUnit4ClassRunner$1
+            .evaluate(BlockJUnit4ClassRunner.java
+                      : 100) at org.junit.runners.ParentRunner
+            .runLeaf(ParentRunner.java
+                     : 366) at org.junit.runners.BlockJUnit4ClassRunner
+            .runChild(BlockJUnit4ClassRunner.java
+                      : 103) at com.avaloq.tools.ddk.xtext.test.junit.runners
+            .XtextClassRunner.runChild(XtextClassRunner.java : 193) at org.junit
+            .runners.BlockJUnit4ClassRunner
+            .runChild(BlockJUnit4ClassRunner.java : 63) at org.junit.runners
+            .ParentRunner$4.run(ParentRunner.java : 331) at org.junit.runners
+            .ParentRunner$1.schedule(ParentRunner.java : 79) at org.junit
+            .runners.ParentRunner.runChildren(ParentRunner.java : 329) at
+        org.junit.runners.ParentRunner.access$100(ParentRunner.java
+                                                  : 66) at org.junit.runners
+            .ParentRunner$2.evaluate(ParentRunner.java : 293) at org.junit
+            .runners.ParentRunner$3.evaluate(ParentRunner.java : 306) at org
+            .junit.runners.ParentRunner.run(ParentRunner.java : 413) at org
+            .junit.runners.Suite.runChild(Suite.java : 128) at org.junit.runners
+            .Suite.runChild(Suite.java : 27) at org.junit.runners.ParentRunner$4
+            .run(ParentRunner.java : 331) at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java
+                                             : 293) at org.junit.runners
+            .ParentRunner$3.evaluate(ParentRunner.java : 306) at org.junit
+            .runners.ParentRunner.run(ParentRunner.java : 413) at org.junit
+            .runners.Suite.runChild(Suite.java : 128) at org.junit.runners.Suite
+            .runChild(Suite.java : 27) at org.junit.runners.ParentRunner$4
+            .run(ParentRunner.java : 331) at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java
+                                             : 293) at org.junit.runners
+            .ParentRunner$3.evaluate(ParentRunner.java : 306) at org.junit
+            .runners.ParentRunner.run(ParentRunner.java : 413) at org.junit
+            .runners.Suite.runChild(Suite.java : 128) at org.junit.runners.Suite
+            .runChild(Suite.java : 27) at org.junit.runners.ParentRunner$4
+            .run(ParentRunner.java : 331) at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java
+                                             : 293) at org.junit.runners
+            .ParentRunner$3.evaluate(ParentRunner.java : 306) at org.junit
+            .runners.ParentRunner.run(ParentRunner.java : 413) at org.apache
+            .maven.surefire.junitcore.JUnitCore.run(JUnitCore.java : 49) at org
+            .apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .createRequestAndRun(JUnitCoreWrapper.java
+                                 : 120) at org.apache.maven.surefire.junitcore
+            .JUnitCoreWrapper.executeEager(JUnitCoreWrapper.java : 95) at org
+            .apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .execute(JUnitCoreWrapper.java
+                     : 75) at org.apache.maven.surefire.junitcore
+            .JUnitCoreWrapper.execute(JUnitCoreWrapper.java : 69) at org.apache
+            .maven.surefire.junitcore.JUnitCoreProvider
+            .invoke(JUnitCoreProvider.java : 146) at java.base
+        /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base
+        /
+        java.lang.reflect.Method.invoke(Method.java : 580) at org.apache.maven
+            .surefire.api.util.ReflectionUtils
+            .invokeMethodWithArray2(ReflectionUtils.java : 137) at org.apache
+            .maven.surefire.booter.ProviderFactory$ProviderProxy
+            .invoke(ProviderFactory.java
+                    : 148) at org.apache.maven.surefire.booter.ProviderFactory
+            .invokeProvider(ProviderFactory.java : 88) at org.eclipse.tycho
+            .surefire.osgibooter.OsgiSurefireBooter
+            .invokeSureFire(OsgiSurefireBooter.java : 195) at java.base
+        /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base
+        /
+        java.lang.reflect.Method.invoke(Method.java : 580) at org.eclipse.tycho
+            .surefire.osgibooter.OsgiSurefireBooter
+            .run(OsgiSurefireBooter.java : 116) at org.eclipse.tycho.surefire
+            .osgibooter.AbstractUITestApplication
+            .runTests(AbstractUITestApplication.java
+                      : 51) at org.eclipse.e4.ui.internal.workbench.swt
+            .E4Testable.lambda$0(E4Testable.java : 79) at java.base
+        / java.lang.Thread.run(Thread.java : 1583)

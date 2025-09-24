@@ -1,0 +1,125 @@
+com.avaloq.tools.ddk.check.ui.test.CheckCatalogWizardTest
+        .testInitiallyNoGrammarSelected-- Time elapsed : 41.22 s < < <
+    ERROR !org.eclipse.swtbot.swt.finder.widgets
+            .TimeoutException : Timeout after : 40000 ms
+            .
+    : The
+      widget(of type 'Combo' and with label(with mnemonic 'Grammar'))
+          was not enabled.at org.eclipse.swtbot.swt.finder.SWTBotFactory
+            .waitUntil(SWTBotFactory.java : 523) at org.eclipse.swtbot.swt
+            .finder.SWTBot.waitUntil(SWTBot.java : 1)
+                at org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot
+            .waitUntil(SWTWorkbenchBot.java : 1) at com.avaloq.tools.ddk.test.ui
+            .swtbot.SwtWorkbenchBot.waitUntil(SwtWorkbenchBot.java : 1)
+                at com.avaloq.tools.ddk.test.ui.swtbot.SwtWizardBot
+            .waitUntil(SwtWizardBot.java : 1) at org.eclipse.swtbot.swt.finder
+            .SWTBotFactory.waitUntil(SWTBotFactory.java : 497) at org.eclipse
+            .swtbot.swt.finder.SWTBot.waitUntil(SWTBot.java : 1)
+                at org.eclipse.swtbot.eclipse.finder.SWTWorkbenchBot
+            .waitUntil(SWTWorkbenchBot.java : 1) at com.avaloq.tools.ddk.test.ui
+            .swtbot.SwtWorkbenchBot.waitUntil(SwtWorkbenchBot.java : 1)
+                at com.avaloq.tools.ddk.test.ui.swtbot.SwtWizardBot
+            .waitUntil(SwtWizardBot.java : 1)
+                at com.avaloq.tools.ddk.check.ui.test.util.CheckWizardTestUtil
+            .waitForGrammarFieldEnabled(CheckWizardTestUtil.java : 187)
+                at com.avaloq.tools.ddk.check.ui.test.util.CheckWizardTestUtil
+            .grammarName(CheckWizardTestUtil.java : 164)
+                at com.avaloq.tools.ddk.check.ui.test.CheckCatalogWizardTest
+            .testInitiallyNoGrammarSelected(CheckCatalogWizardTest.java : 252)
+                at java.base /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base /
+        java.lang.reflect.Method.invoke(Method.java : 580) at org.junit.runners
+            .model.FrameworkMethod$1
+            .runReflectiveCall(FrameworkMethod.java : 59)
+                at org.junit.internal.runners.model.ReflectiveCallable
+            .run(ReflectiveCallable.java : 12) at org.junit.runners.model
+            .FrameworkMethod.invokeExplosively(FrameworkMethod.java : 56)
+                at org.junit.internal.runners.statements.InvokeMethod
+            .evaluate(InvokeMethod.java : 17) at org.junit.internal.runners
+            .statements.RunBefores.evaluate(RunBefores.java : 26)
+                at org.junit.internal.runners.statements.RunAfters
+            .evaluate(RunAfters.java : 27) at org.junit.runners.ParentRunner$3
+            .evaluate(ParentRunner.java : 306)
+                at org.junit.runners.BlockJUnit4ClassRunner$1
+            .evaluate(BlockJUnit4ClassRunner.java : 100) at org.junit.runners
+            .ParentRunner.runLeaf(ParentRunner.java : 366)
+                at org.junit.runners.BlockJUnit4ClassRunner
+            .runChild(BlockJUnit4ClassRunner.java : 103)
+                at com.avaloq.tools.ddk.xtext.test.junit.runners
+            .XtextClassRunner.runChild(XtextClassRunner.java : 193)
+                at org.junit.runners.BlockJUnit4ClassRunner
+            .runChild(BlockJUnit4ClassRunner.java : 63) at org.junit.runners
+            .ParentRunner$4.run(ParentRunner.java : 331) at org.junit.runners
+            .ParentRunner$1.schedule(ParentRunner.java : 79) at org.junit
+            .runners.ParentRunner.runChildren(ParentRunner.java : 329)
+                at org.junit.runners.ParentRunner
+            .access$100(ParentRunner.java : 66) at org.junit.runners
+            .ParentRunner$2.evaluate(ParentRunner.java : 293) at org.junit
+            .runners.ParentRunner$3.evaluate(ParentRunner.java : 306) at org
+            .junit.runners.ParentRunner.run(ParentRunner.java : 413)
+                at org.junit.runners.Suite.runChild(Suite.java : 128)
+                    at org.junit.runners.Suite.runChild(Suite.java : 27) at org
+            .junit.runners.ParentRunner$4.run(ParentRunner.java : 331)
+                at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java : 293)
+                at org.junit.runners.ParentRunner$3
+            .evaluate(ParentRunner.java : 306) at org.junit.runners.ParentRunner
+            .run(ParentRunner.java : 413)
+                at org.junit.runners.Suite.runChild(Suite.java : 128)
+                    at org.junit.runners.Suite.runChild(Suite.java : 27) at org
+            .junit.runners.ParentRunner$4.run(ParentRunner.java : 331)
+                at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java : 293)
+                at org.junit.runners.ParentRunner$3
+            .evaluate(ParentRunner.java : 306) at org.junit.runners.ParentRunner
+            .run(ParentRunner.java : 413)
+                at org.junit.runners.Suite.runChild(Suite.java : 128)
+                    at org.junit.runners.Suite.runChild(Suite.java : 27) at org
+            .junit.runners.ParentRunner$4.run(ParentRunner.java : 331)
+                at org.junit.runners.ParentRunner$1
+            .schedule(ParentRunner.java : 79) at org.junit.runners.ParentRunner
+            .runChildren(ParentRunner.java : 329) at org.junit.runners
+            .ParentRunner.access$100(ParentRunner.java : 66) at org.junit
+            .runners.ParentRunner$2.evaluate(ParentRunner.java : 293)
+                at org.junit.runners.ParentRunner$3
+            .evaluate(ParentRunner.java : 306) at org.junit.runners.ParentRunner
+            .run(ParentRunner.java : 413) at org.apache.maven.surefire.junitcore
+            .JUnitCore.run(JUnitCore.java : 49)
+                at org.apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .createRequestAndRun(JUnitCoreWrapper.java : 120)
+                at org.apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .executeEager(JUnitCoreWrapper.java : 95)
+                at org.apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .execute(JUnitCoreWrapper.java : 75)
+                at org.apache.maven.surefire.junitcore.JUnitCoreWrapper
+            .execute(JUnitCoreWrapper.java : 69)
+                at org.apache.maven.surefire.junitcore.JUnitCoreProvider
+            .invoke(JUnitCoreProvider.java : 146) at java.base /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base /
+        java.lang.reflect.Method.invoke(Method.java : 580)
+            at org.apache.maven.surefire.api.util.ReflectionUtils
+                .invokeMethodWithArray2(ReflectionUtils.java : 137) at org
+                .apache.maven.surefire.booter.ProviderFactory$ProviderProxy
+                .invoke(ProviderFactory.java : 148)
+                    at org.apache.maven.surefire.booter.ProviderFactory
+                .invokeProvider(ProviderFactory.java : 88)
+                    at org.eclipse.tycho.surefire.osgibooter.OsgiSurefireBooter
+                .invokeSureFire(OsgiSurefireBooter.java : 195) at java.base /
+        jdk.internal.reflect.DirectMethodHandleAccessor
+            .invoke(DirectMethodHandleAccessor.java : 103) at java.base /
+        java.lang.reflect.Method.invoke(Method.java : 580)
+            at org.eclipse.tycho.surefire.osgibooter.OsgiSurefireBooter
+                .run(OsgiSurefireBooter.java : 116) at org.eclipse.tycho
+                .surefire.osgibooter.AbstractUITestApplication
+                .runTests(AbstractUITestApplication.java : 51)
+                    at org.eclipse.e4.ui.internal.workbench.swt.E4Testable
+                .lambda$0(E4Testable.java : 79) at java.base /
+        java.lang.Thread.run(Thread.java : 1583)
