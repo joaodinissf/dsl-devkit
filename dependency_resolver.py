@@ -105,6 +105,7 @@ def is_optional(item: str) -> bool:
 def discover_bundles(root: Path) -> tuple[dict[str, Bundle], dict[str, set[str]]]:
     bundles: dict[str, Bundle] = {}
     exports_by_pkg: dict[str, set[str]] = defaultdict(set)
+    fragment_hosts: dict[str, str] = {}
 
     for manifest in root.rglob("META-INF/MANIFEST.MF"):
         headers = parse_manifest(manifest)
@@ -124,6 +125,9 @@ def discover_bundles(root: Path) -> tuple[dict[str, Bundle], dict[str, set[str]]
         imports = split_header_list(headers.get("Import-Package"))
         exports = split_header_list(headers.get("Export-Package"))
         export_packages = frozenset(extract_token(pkg) for pkg in exports)
+        fragment_host = headers.get("Fragment-Host")
+        if fragment_host:
+            fragment_hosts[bsn] = extract_token(fragment_host)
 
         for pkg in export_packages:
             exports_by_pkg[pkg].add(bsn)
@@ -139,12 +143,13 @@ def discover_bundles(root: Path) -> tuple[dict[str, Bundle], dict[str, set[str]]
             export_packages=export_packages,
         )
 
-    return bundles, exports_by_pkg
+    return bundles, exports_by_pkg, fragment_hosts
 
 
 def collect_required_bsns(
     bundles: dict[str, Bundle],
     exports_by_pkg: dict[str, set[str]],
+    fragment_hosts: dict[str, str],
     seed_bsn: str,
     include_optional: bool,
 ) -> set[str]:
@@ -163,6 +168,10 @@ def collect_required_bsns(
         if current in needed:
             continue
         needed.add(current)
+
+        host_bsn = fragment_hosts.get(current)
+        if host_bsn:
+            maybe_enqueue(host_bsn)
 
         for item in bundles[current].require:
             if not include_optional and is_optional(item):
@@ -196,10 +205,11 @@ def main(argv: Iterable[str] | None = None) -> int:
     args = parse_args(argv)
     root = Path(args.root).resolve()
 
-    bundles, exports_by_pkg = discover_bundles(root)
+    bundles, exports_by_pkg, fragment_hosts = discover_bundles(root)
     needed_bsns = collect_required_bsns(
         bundles,
         exports_by_pkg,
+        fragment_hosts,
         args.seed,
         args.include_optional,
     )

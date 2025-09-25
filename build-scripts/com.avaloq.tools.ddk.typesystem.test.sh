@@ -1,1 +1,1 @@
-mvn compile -f ddk-parent/pom.xml -T4C -pl :com.avaloq.tools.ddk.typesystem.test
+mvn compile -f ddk-parent/pom.xml -T4C -pl :com.avaloq.tools.ddk,:com.avaloq.tools.ddk.typesystem,:com.avaloq.tools.ddk.typesystem.test,:com.avaloq.tools.ddk.xtext
