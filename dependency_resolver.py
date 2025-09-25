@@ -1,150 +1,218 @@
 #!/usr/bin/env python3
-import os, re, sys, xml.etree.ElementTree as ET
+"""Resolve local Eclipse bundles needed to build a given bundle."""
+
+from __future__ import annotations
+
+import argparse
+import re
+import sys
+import xml.etree.ElementTree as ET
+from collections import defaultdict, deque
+from dataclasses import dataclass
 from pathlib import Path
-from collections import deque, defaultdict
-
-ROOT = Path(sys.argv[1] if len(sys.argv) >= 2 else ".").resolve()
-SEED_BSN = sys.argv[2] if len(sys.argv) >= 3 else "com.avaloq.tools.ddk.xtext.expression.ui"
+from typing import Iterable, Iterator
 
 
-def read_pom_artifactid(pom_path: Path):
+@dataclass(frozen=True)
+class Bundle:
+    bsn: str
+    pom: Path
+    group_id: str | None
+    artifact_id: str | None
+    packaging: str | None
+    require: tuple[str, ...]
+    imports: tuple[str, ...]
+    export_packages: frozenset[str]
+
+
+def parse_args(argv: Iterable[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Collect required Eclipse bundles for a given seed bundle.",
+    )
+    parser.add_argument("root", nargs="?", default=".", help="Repository root to scan")
+    parser.add_argument(
+        "seed",
+        nargs="?",
+        default="com.avaloq.tools.ddk.xtext.expression.ui",
+        help="Bundle-SymbolicName to start dependency collection from",
+    )
+    parser.add_argument(
+        "--include-optional",
+        dest="include_optional",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Include dependencies marked resolution:=optional (default: include)",
+    )
+    return parser.parse_args(argv)
+
+
+def read_pom_metadata(pom_path: Path) -> tuple[str | None, str | None, str | None]:
     try:
         ns = {"m": "http://maven.apache.org/POM/4.0.0"}
         tree = ET.parse(pom_path)
         root = tree.getroot()
-        aid = root.findtext("m:artifactId", namespaces=ns)
-        gid = root.findtext("m:groupId", namespaces=ns) or root.findtext(
+        artifact_id = root.findtext("m:artifactId", namespaces=ns)
+        group_id = root.findtext("m:groupId", namespaces=ns) or root.findtext(
             "m:parent/m:groupId", namespaces=ns
         )
         packaging = root.findtext("m:packaging", namespaces=ns) or "jar"
-        return gid, aid, packaging
+        return group_id, artifact_id, packaging
     except Exception:
         return None, None, None
 
 
-def parse_manifest(manifest_path: Path):
+def parse_manifest(manifest_path: Path) -> dict[str, str]:
     # Concatenate continuation lines per JAR spec (lines starting with a single space)
     text = manifest_path.read_text(encoding="utf-8", errors="ignore")
-    lines = []
-    buf = ""
+    lines: list[str] = []
+    buffer = ""
     for raw in text.splitlines():
         if raw.startswith(" "):
-            buf += raw[1:]
+            buffer += raw[1:]
         else:
-            if buf:
-                lines.append(buf)
-            buf = raw
-    if buf:
-        lines.append(buf)
-    headers = {}
+            if buffer:
+                lines.append(buffer)
+            buffer = raw
+    if buffer:
+        lines.append(buffer)
+    headers: dict[str, str] = {}
     for line in lines:
         if ":" in line:
-            k, v = line.split(":", 1)
-            headers[k.strip()] = v.strip()
+            key, value = line.split(":", 1)
+            headers[key.strip()] = value.strip()
     return headers
 
 
-def split_list(header_value):
-    # split by commas at top-level (OSGi uses ; for attrs/dirs)
+def split_header_list(value: str | None) -> tuple[str, ...]:
+    if not value:
+        return tuple()
     items = []
-    if not header_value:
-        return items
-    # naive but works for typical manifests
-    for part in re.split(r",\s*(?=[^;]+)", header_value):
+    for part in re.split(r",\s*(?=[^;]+)", value):
         part = part.strip()
         if part:
             items.append(part)
-    return items
+    return tuple(items)
 
 
-def extract_bsn_token(item):
-    # first segment before ';'
+def extract_token(item: str) -> str:
     return item.split(";", 1)[0].strip()
 
 
-def is_optional(item):
+def is_optional(item: str) -> bool:
     return ";resolution:=optional" in item
 
 
-# scan repo for bundles (MANIFEST.MF + pom.xml)
-bundles = {}
-exports_by_pkg = defaultdict(set)
+def discover_bundles(root: Path) -> tuple[dict[str, Bundle], dict[str, set[str]]]:
+    bundles: dict[str, Bundle] = {}
+    exports_by_pkg: dict[str, set[str]] = defaultdict(set)
 
-for manifest in ROOT.rglob("META-INF/MANIFEST.MF"):
-    headers = parse_manifest(manifest)
-    bsn = headers.get("Bundle-SymbolicName", "").split(";")[0].strip()
-    if not bsn:
-        continue
-    pom = manifest.parents[2] / "pom.xml"  # typical layout: module/META-INF/MANIFEST.MF
-    if not pom.exists():
-        pom = manifest.parents[1] / "pom.xml"
-    gid, aid, packaging = read_pom_artifactid(pom)
-    if not aid:
-        continue
-    require = [x for x in split_list(headers.get("Require-Bundle", ""))]
-    imports = [x for x in split_list(headers.get("Import-Package", ""))]
-    exports = [x for x in split_list(headers.get("Export-Package", ""))]
-    export_pkgs = set(extract_bsn_token(x) for x in exports)  # here token == package
-    for p in export_pkgs:
-        exports_by_pkg[p].add(bsn)
-    bundles[bsn] = {
-        "pom": pom,
-        "groupId": gid,
-        "artifactId": aid,
-        "packaging": packaging,
-        "require": require,
-        "imports": imports,
-        "exportPkgs": export_pkgs,
+    for manifest in root.rglob("META-INF/MANIFEST.MF"):
+        headers = parse_manifest(manifest)
+        bsn = headers.get("Bundle-SymbolicName", "").split(";")[0].strip()
+        if not bsn:
+            continue
+
+        pom = manifest.parents[2] / "pom.xml"
+        if not pom.exists():
+            pom = manifest.parents[1] / "pom.xml"
+
+        group_id, artifact_id, packaging = read_pom_metadata(pom)
+        if not artifact_id:
+            continue
+
+        require = split_header_list(headers.get("Require-Bundle"))
+        imports = split_header_list(headers.get("Import-Package"))
+        exports = split_header_list(headers.get("Export-Package"))
+        export_packages = frozenset(extract_token(pkg) for pkg in exports)
+
+        for pkg in export_packages:
+            exports_by_pkg[pkg].add(bsn)
+
+        bundles[bsn] = Bundle(
+            bsn=bsn,
+            pom=pom,
+            group_id=group_id,
+            artifact_id=artifact_id,
+            packaging=packaging,
+            require=require,
+            imports=imports,
+            export_packages=export_packages,
+        )
+
+    return bundles, exports_by_pkg
+
+
+def collect_required_bsns(
+    bundles: dict[str, Bundle],
+    exports_by_pkg: dict[str, set[str]],
+    seed_bsn: str,
+    include_optional: bool,
+) -> set[str]:
+    if seed_bsn not in bundles:
+        raise SystemExit(f"Seed bundle not found: {seed_bsn}")
+
+    needed: set[str] = set()
+    queue: deque[str] = deque([seed_bsn])
+
+    def maybe_enqueue(bsn: str) -> None:
+        if bsn in bundles and bsn not in needed:
+            queue.append(bsn)
+
+    while queue:
+        current = queue.popleft()
+        if current in needed:
+            continue
+        needed.add(current)
+
+        for item in bundles[current].require:
+            if not include_optional and is_optional(item):
+                continue
+            maybe_enqueue(extract_token(item))
+
+        for item in bundles[current].imports:
+            if not include_optional and is_optional(item):
+                continue
+            providers = exports_by_pkg.get(extract_token(item), set())
+            for provider in providers:
+                maybe_enqueue(provider)
+
+    return needed
+
+
+def bundles_to_modules(bundles: dict[str, Bundle], bsns: Iterable[str]) -> list[str]:
+    artifact_ids = {
+        bundles[bsn].artifact_id
+        for bsn in bsns
+        if bsn in bundles and bundles[bsn].artifact_id
     }
-
-if SEED_BSN not in bundles:
-    sys.exit(f"Seed bundle not found: {SEED_BSN}")
-
-needed_bsns = set()
-queue = deque([SEED_BSN])
+    return sorted(artifact_ids)
 
 
-def add_require_edges(bsn):
-    for item in bundles[bsn]["require"]:
-        if is_optional(item):
-            continue
-        dep = extract_bsn_token(item)
-        if dep in bundles and dep not in needed_bsns:
-            queue.append(dep)
+def format_modules_for_output(modules: Iterable[str]) -> str:
+    return ",".join(f":{module}" for module in modules)
 
 
-def add_import_edges(bsn):
-    # For each imported package, if a local bundle exports it, include that bundle.
-    for item in bundles[bsn]["imports"]:
-        if is_optional(item):
-            continue
-        pkg = extract_bsn_token(item)  # here token == package name
-        providers = [prov for prov in exports_by_pkg.get(pkg, []) if prov in bundles]
-        for prov in providers:
-            if prov not in needed_bsns:
-                queue.append(prov)
+def main(argv: Iterable[str] | None = None) -> int:
+    args = parse_args(argv)
+    root = Path(args.root).resolve()
+
+    bundles, exports_by_pkg = discover_bundles(root)
+    needed_bsns = collect_required_bsns(
+        bundles,
+        exports_by_pkg,
+        args.seed,
+        args.include_optional,
+    )
+    modules = bundles_to_modules(bundles, needed_bsns)
+
+    print("# Modules needed (pass this to mvn -pl):")
+    module_list = format_modules_for_output(modules)
+    print(module_list)
+    print("# Full command")
+    print(f"mvn compile -f ddk-parent/pom.xml -T4C -pl {module_list}")
+
+    return 0
 
 
-while queue:
-    cur = queue.popleft()
-    if cur in needed_bsns:
-        continue
-    needed_bsns.add(cur)
-    add_require_edges(cur)
-    add_import_edges(cur)
-
-# Map to Maven modules (artifactIds); keep only eclipse-plugin/feature/rcp/repository types
-artifact_ids = []
-for bsn in needed_bsns:
-    b = bundles[bsn]
-    if b["pom"].exists():
-        artifact_ids.append(b["artifactId"])
-
-# Deterministic order: sort by name
-artifact_ids = sorted(set(artifact_ids))
-
-print("# Modules needed (pass this to mvn -pl):")
-modules = ",".join(f":{aid}" for aid in artifact_ids)
-print(modules)
-print("# Full command")
-print(f"mvn compile -f ddk-parent/pom.xml -T4C -pl {modules}")
+if __name__ == "__main__":
+    sys.exit(main())

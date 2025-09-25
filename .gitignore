@@ -7,3 +7,6 @@
 *.xtendbin
 /*/xtend-gen/*
 !/*/xtend-gen/.gitignore
+# Maven local repo created via .mvn/maven.config
+.m2/
+.DS_Store

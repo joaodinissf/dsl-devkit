@@ -1,0 +1,1 @@
+mvn compile -f ddk-parent/pom.xml -T4C -pl :com.avaloq.tools.ddk,:com.avaloq.tools.ddk.test.core,:com.avaloq.tools.ddk.test.ui,:com.avaloq.tools.ddk.test.ui.test
