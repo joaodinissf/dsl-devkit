@@ -1,4 +1,19 @@
 <?eclipse version="3.6"?>
 <plugin>
    <extension-point id="valid" name="Valid Extensions" schema="schema/valid.exsd"/>
+
+   <!-- Quick Outline command definition.
+        The org.eclipse.xtext.ui plugin defines a key binding (Ctrl+O) for this
+        command but never defines the command itself, relying on individual language
+        UI plugins to contribute it via QuickOutlineFragment2. When no such language
+        plugin is loaded, Eclipse logs a warning about an undefined command. Defining
+        the command here ensures it is always available. -->
+   <extension
+     point="org.eclipse.ui.commands">
+     <command
+       description="Open the quick outline."
+       id="org.eclipse.xtext.ui.editor.outline.QuickOutline"
+       name="Quick Outline">
+     </command>
+   </extension>
 </plugin>
