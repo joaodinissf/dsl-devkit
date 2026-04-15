@@ -45,6 +45,7 @@
       <modules>
         <module>com.example.target</module>
         <module>com.example.ui</module>
+        <module>com.example.ui.test</module>
       </modules>
     </profile>
     <!-- Activating this profile deactivates with-eclipse, building only core. -->
