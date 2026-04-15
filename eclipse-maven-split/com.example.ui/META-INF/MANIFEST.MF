@@ -1,0 +1,13 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Example UI Plugin
+Bundle-SymbolicName: com.example.ui;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: com.example.ui.Activator
+Bundle-Vendor: PoC
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.core.runtime,
+ com.example.core
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Bundle-ActivationPolicy: lazy
+Export-Package: com.example.ui

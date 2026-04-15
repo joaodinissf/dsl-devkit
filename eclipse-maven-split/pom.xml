@@ -19,17 +19,20 @@
     <maven.compiler.release>21</maven.compiler.release>
 
     <!-- Eclipse dependency versions (from Maven Central) -->
-    <xtext.version>2.36.0</xtext.version>
-    <emf.ecore.version>2.39.0</emf.ecore.version>
-    <eclipse.core.runtime.version>3.33.100</eclipse.core.runtime.version>
+    <xtext.version>2.42.0</xtext.version>
+    <emf.ecore.version>2.42.0</emf.ecore.version>
+    <eclipse.core.runtime.version>3.34.200</eclipse.core.runtime.version>
 
     <!-- Build tool versions -->
-    <bnd.version>7.0.0</bnd.version>
-    <junit.version>5.11.4</junit.version>
+    <tycho.version>5.0.2</tycho.version>
+    <bnd.version>7.1.0</bnd.version>
+    <junit.version>5.12.2</junit.version>
   </properties>
 
   <modules>
+    <module>com.example.target</module>
     <module>com.example.core</module>
+    <module>com.example.ui</module>
   </modules>
 
   <dependencyManagement>
@@ -59,8 +62,32 @@
   </dependencyManagement>
 
   <build>
+    <plugins>
+      <plugin>
+        <groupId>org.eclipse.tycho</groupId>
+        <artifactId>tycho-maven-plugin</artifactId>
+        <version>${tycho.version}</version>
+        <extensions>true</extensions>
+      </plugin>
+    </plugins>
     <pluginManagement>
       <plugins>
+        <!-- Tycho target platform: resolve pom-first (jar) artifacts -->
+        <plugin>
+          <groupId>org.eclipse.tycho</groupId>
+          <artifactId>target-platform-configuration</artifactId>
+          <version>${tycho.version}</version>
+          <configuration>
+            <pomDependencies>consider</pomDependencies>
+            <target>
+              <artifact>
+                <groupId>com.example</groupId>
+                <artifactId>com.example.target</artifactId>
+                <version>${project.version}</version>
+              </artifact>
+            </target>
+          </configuration>
+        </plugin>
         <plugin>
           <groupId>biz.aQute.bnd</groupId>
           <artifactId>bnd-maven-plugin</artifactId>
