@@ -23,19 +23,53 @@ Core modules use `jar` packaging with `bnd-maven-plugin` generating OSGi metadat
 
 ## Architecture
 
+### Dependency Graph
+
+```mermaid
+graph TD
+    subgraph "Tier 1 & 2: Pure Maven (jar)"
+        MODEL["com.example.model<br/><i>EMF types</i>"]
+        CORE["com.example.core<br/><i>Xtext utilities</i>"]
+        DSL["com.example.dsl<br/><i>Validation logic</i>"]
+    end
+
+    subgraph "Tier 3: Tycho (eclipse-plugin)"
+        UI["com.example.ui<br/><i>Eclipse View</i>"]
+        TEST["com.example.ui.test<br/><i>OSGi integration test</i>"]
+    end
+
+    subgraph "Build Infrastructure"
+        TARGET["com.example.target<br/><i>Eclipse 2026-03 + Xtext 2.42.0</i>"]
+    end
+
+    DSL --> MODEL
+    DSL --> CORE
+    UI --> MODEL
+    UI --> CORE
+    UI --> DSL
+    UI -.->|pomDependencies=consider| TARGET
+    TEST --> UI
+    TEST --> CORE
+
+    style MODEL fill:#4a9,stroke:#333,color:#fff
+    style CORE fill:#4a9,stroke:#333,color:#fff
+    style DSL fill:#4a9,stroke:#333,color:#fff
+    style UI fill:#c64,stroke:#333,color:#fff
+    style TEST fill:#c64,stroke:#333,color:#fff
+    style TARGET fill:#888,stroke:#333,color:#fff
+```
+
+### Module Layout
+
 ```
 eclipse-maven-split/
-├── pom.xml                          # Root reactor (Tycho + Maven)
-├── .mvn/extensions.xml              # Tycho build extension (unused, plugin approach used instead)
-├── com.example.core/                # PURE MAVEN (jar packaging)
-│   ├── pom.xml                      #   Dependencies: Xtext, EMF from Maven Central
-│   └── src/                         #   Tests: JUnit 5, no OSGi container
-├── com.example.ui/                  # TYCHO (eclipse-plugin packaging)
-│   ├── pom.xml                      #   POM <dependency> on core (for pomDependencies)
-│   ├── META-INF/MANIFEST.MF         #   Require-Bundle: com.example.core
-│   └── plugin.xml                   #   Eclipse view extension point
+├── pom.xml                          # Root reactor (profiles: default, core-only)
+├── com.example.model/               # PURE MAVEN — EMF model types
+├── com.example.core/                # PURE MAVEN — Xtext/EMF utilities
+├── com.example.dsl/                 # PURE MAVEN — DSL validation (depends on model + core)
+├── com.example.ui/                  # TYCHO — Eclipse view (depends on all core modules)
+├── com.example.ui.test/             # TYCHO — OSGi integration test
 └── com.example.target/              # Target platform definition
-    └── com.example.target.target    #   Eclipse 2026-03 + Xtext 2.42.0 runtime
 ```
 
 ## Key Findings
