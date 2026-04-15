@@ -29,11 +29,29 @@
     <junit.version>5.12.2</junit.version>
   </properties>
 
+  <!-- Core modules always built -->
   <modules>
-    <module>com.example.target</module>
     <module>com.example.core</module>
-    <module>com.example.ui</module>
   </modules>
+
+  <profiles>
+    <!-- Active by default: adds Tycho/Eclipse modules to the reactor.
+         Deactivated when any profile is explicitly specified (-P core-only). -->
+    <profile>
+      <id>with-eclipse</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <modules>
+        <module>com.example.target</module>
+        <module>com.example.ui</module>
+      </modules>
+    </profile>
+    <!-- Activating this profile deactivates with-eclipse, building only core. -->
+    <profile>
+      <id>core-only</id>
+    </profile>
+  </profiles>
 
   <dependencyManagement>
     <dependencies>
