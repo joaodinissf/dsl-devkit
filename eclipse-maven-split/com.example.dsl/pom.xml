@@ -10,15 +10,10 @@
     <version>1.0.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>com.example.ui</artifactId>
-  <packaging>eclipse-plugin</packaging>
-  <name>Example UI Plugin (Tycho)</name>
-  <description>
-    Eclipse UI plugin built with Tycho. Depends on com.example.core
-    (a pure Maven jar) via Require-Bundle + pomDependencies=consider.
-  </description>
+  <artifactId>com.example.dsl</artifactId>
+  <packaging>jar</packaging>
+  <name>Example DSL (Pure Maven)</name>
 
-  <!-- Maven dependency needed for pomDependencies=consider to work -->
   <dependencies>
     <dependency>
       <groupId>com.example</groupId>
@@ -31,9 +26,32 @@
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>com.example</groupId>
-      <artifactId>com.example.dsl</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <configuration>
+          <bnd><![CDATA[
+Bundle-SymbolicName: ${project.artifactId}
+Export-Package: com.example.dsl
+Import-Package: *
+          ]]></bnd>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
 </project>

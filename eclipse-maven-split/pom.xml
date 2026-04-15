@@ -31,7 +31,9 @@
 
   <!-- Core modules always built -->
   <modules>
+    <module>com.example.model</module>
     <module>com.example.core</module>
+    <module>com.example.dsl</module>
   </modules>
 
   <profiles>
