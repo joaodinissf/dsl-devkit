@@ -49,6 +49,16 @@
         <module>com.example.ui</module>
         <module>com.example.ui.test</module>
       </modules>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.eclipse.tycho</groupId>
+            <artifactId>tycho-maven-plugin</artifactId>
+            <version>${tycho.version}</version>
+            <extensions>true</extensions>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
     <!-- Activating this profile deactivates with-eclipse, building only core. -->
     <profile>
@@ -83,14 +93,6 @@
   </dependencyManagement>
 
   <build>
-    <plugins>
-      <plugin>
-        <groupId>org.eclipse.tycho</groupId>
-        <artifactId>tycho-maven-plugin</artifactId>
-        <version>${tycho.version}</version>
-        <extensions>true</extensions>
-      </plugin>
-    </plugins>
     <pluginManagement>
       <plugins>
         <!-- Tycho target platform: resolve pom-first (jar) artifacts -->

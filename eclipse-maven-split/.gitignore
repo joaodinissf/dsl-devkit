@@ -5,3 +5,5 @@ target/
 .classpath
 .project
 .factorypath
+eclipse-maven-split/node_modules/
+eclipse-maven-split/.nx/

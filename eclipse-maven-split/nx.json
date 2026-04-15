@@ -1,0 +1,11 @@
+{
+  "plugins": [
+    {
+      "plugin": "@nx/maven",
+      "options": {
+        "targetNamePrefix": "mvn-"
+      }
+    }
+  ],
+  "defaultBase": "master"
+}
