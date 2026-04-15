@@ -63,7 +63,7 @@
     <module>../ddk-repository</module>
     <module>../com.avaloq.tools.ddk.runtime.feature</module>
     <module>../com.avaloq.tools.ddk.feature</module>
-    <module>../com.avaloq.tools.ddk</module>
+    <!-- com.avaloq.tools.ddk is now a pure Maven jar, built separately -->
     <module>../com.avaloq.tools.ddk.xtext</module>
     <module>../com.avaloq.tools.ddk.xtext.builder</module>
     <module>../com.avaloq.tools.ddk.xtext.check.generator</module>
@@ -124,6 +124,16 @@
     <module>../com.avaloq.tools.ddk.typesystem.test</module>
   </modules>
 
+  <!-- Migrated core modules: declare as POM dependencies so
+       pomDependencies=consider makes them available to all Tycho modules -->
+  <dependencies>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
   <distributionManagement>
     <repository>
       <id>${releaseRepoId}</id>
@@ -179,6 +189,7 @@
         <artifactId>target-platform-configuration</artifactId>
         <version>${tycho.version}</version>
         <configuration>
+          <pomDependencies>consider</pomDependencies>
           <target>
             <artifact>
               <groupId>com.avaloq.tools.ddk</groupId>

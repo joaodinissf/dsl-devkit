@@ -9,4 +9,14 @@
   <groupId>com.avaloq.tools.ddk</groupId>
   <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
   <packaging>eclipse-plugin</packaging>
+
+  <!-- POM dependency needed for pomDependencies=consider to resolve
+       com.avaloq.tools.ddk (now a pure Maven jar) in the Tycho build -->
+  <dependencies>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
 </project>

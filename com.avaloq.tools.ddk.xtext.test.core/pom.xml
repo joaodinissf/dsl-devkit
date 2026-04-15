@@ -9,4 +9,11 @@
 
   <artifactId>com.avaloq.tools.ddk.xtext.test.core</artifactId>
   <packaging>eclipse-plugin</packaging>
+  <dependencies>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
 </project>
