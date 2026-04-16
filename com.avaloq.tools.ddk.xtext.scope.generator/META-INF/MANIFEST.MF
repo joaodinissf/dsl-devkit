@@ -1,0 +1,14 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: com.avaloq.tools.ddk.xtext.scope.generator
+Bundle-SymbolicName: com.avaloq.tools.ddk.xtext.scope.generator;singleton:=true
+Bundle-Version: 17.2.0.qualifier
+Bundle-Vendor: Avaloq Group AG
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Require-Bundle: com.avaloq.tools.ddk.xtext.scope;visibility:=reexport,
+ org.eclipse.xtext,
+ org.eclipse.xtext.xtext.generator,
+ com.avaloq.tools.ddk.xtext.generator,
+ org.eclipse.osgi,
+ com.avaloq.tools.ddk.xtext
+Automatic-Module-Name: com.avaloq.tools.ddk.xtext.scope.generator

@@ -49,6 +49,7 @@
             <configuration>
               <sources>
                 <source>src-gen</source>
+                <source>xtend-gen</source>
               </sources>
             </configuration>
           </execution>
