@@ -1,12 +1,48 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>ddk-parent</artifactId>
     <groupId>com.avaloq.tools.ddk</groupId>
+    <artifactId>ddk-core-parent</artifactId>
     <version>17.2.0-SNAPSHOT</version>
-    <relativePath>../ddk-parent</relativePath>
+    <relativePath>../ddk-core-parent</relativePath>
   </parent>
-  <groupId>com.avaloq.tools.ddk</groupId>
+
   <artifactId>com.avaloq.tools.ddk.xtext.ide</artifactId>
-  <packaging>eclipse-plugin</packaging>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.eclipse.lsp4j</groupId>
+      <artifactId>org.eclipse.lsp4j</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.ide</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <configuration>
+          <bnd><![CDATA[
+Bundle-SymbolicName: ${project.artifactId};singleton:=true
+Bundle-Vendor: Avaloq Group AG
+Export-Package: \
+  com.avaloq.tools.ddk.xtext.ide.contentAssist,\
+  com.avaloq.tools.ddk.xtext.ide.formatting,\
+  com.avaloq.tools.ddk.xtext.ide.findrefs
+Import-Package: *
+          ]]></bnd>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

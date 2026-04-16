@@ -1,22 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>ddk-parent</artifactId>
     <groupId>com.avaloq.tools.ddk</groupId>
+    <artifactId>ddk-core-parent</artifactId>
     <version>17.2.0-SNAPSHOT</version>
-    <relativePath>../ddk-parent</relativePath>
+    <relativePath>../ddk-core-parent</relativePath>
   </parent>
-  <groupId>com.avaloq.tools.ddk</groupId>
-  <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
-  <packaging>eclipse-plugin</packaging>
 
-  <!-- POM dependency needed for pomDependencies=consider to resolve
-       com.avaloq.tools.ddk (now a pure Maven jar) in the Tycho build -->
+  <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
+  <packaging>jar</packaging>
+
   <dependencies>
+    <!-- Internal -->
     <dependency>
       <groupId>com.avaloq.tools.ddk</groupId>
       <artifactId>com.avaloq.tools.ddk</artifactId>
-      <version>${project.version}</version>
+    </dependency>
+    <!-- Xtext -->
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.util</artifactId>
+    </dependency>
+    <!-- EMF -->
+    <dependency>
+      <groupId>org.eclipse.emf</groupId>
+      <artifactId>org.eclipse.emf.ecore</artifactId>
+    </dependency>
+    <!-- Eclipse Platform -->
+    <dependency>
+      <groupId>org.eclipse.platform</groupId>
+      <artifactId>org.eclipse.core.resources</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.platform</groupId>
+      <artifactId>org.eclipse.core.runtime</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jdt</groupId>
+      <artifactId>org.eclipse.jdt.annotation</artifactId>
+    </dependency>
+    <!-- Common libraries -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-text</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
     </dependency>
   </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals><goal>add-source</goal></goals>
+            <configuration>
+              <sources>
+                <source>src-gen</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <configuration>
+          <bnd><![CDATA[
+Bundle-SymbolicName: ${project.artifactId};singleton:=true
+Bundle-Vendor: Avaloq Group AG
+Export-Package: \
+  com.avaloq.tools.ddk.xtext.build,\
+  com.avaloq.tools.ddk.xtext.delegation,\
+  com.avaloq.tools.ddk.xtext.documentation,\
+  com.avaloq.tools.ddk.xtext.extension,\
+  com.avaloq.tools.ddk.xtext.findrefs,\
+  com.avaloq.tools.ddk.xtext.formatting,\
+  com.avaloq.tools.ddk.xtext.formatting.locators,\
+  com.avaloq.tools.ddk.xtext.formatting.locators.conditional,\
+  com.avaloq.tools.ddk.xtext.grammar,\
+  com.avaloq.tools.ddk.xtext.layered,\
+  com.avaloq.tools.ddk.xtext.linking,\
+  com.avaloq.tools.ddk.xtext.modelinference,\
+  com.avaloq.tools.ddk.xtext.modelinference.impl,\
+  com.avaloq.tools.ddk.xtext.modelinference.util,\
+  com.avaloq.tools.ddk.xtext.naming,\
+  com.avaloq.tools.ddk.xtext.parser,\
+  com.avaloq.tools.ddk.xtext.parser.antlr,\
+  com.avaloq.tools.ddk.xtext.resource,\
+  com.avaloq.tools.ddk.xtext.resource.extensions,\
+  com.avaloq.tools.ddk.xtext.resource.persistence,\
+  com.avaloq.tools.ddk.xtext.scoping,\
+  com.avaloq.tools.ddk.xtext.scoping.impl,\
+  com.avaloq.tools.ddk.xtext.serializer,\
+  com.avaloq.tools.ddk.xtext.serializer.sequencer,\
+  com.avaloq.tools.ddk.xtext.serializer.tokens,\
+  com.avaloq.tools.ddk.xtext.tracing,\
+  com.avaloq.tools.ddk.xtext.util,\
+  com.avaloq.tools.ddk.xtext.validation
+Import-Package: *
+          ]]></bnd>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

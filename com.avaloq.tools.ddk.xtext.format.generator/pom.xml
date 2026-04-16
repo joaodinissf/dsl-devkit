@@ -1,12 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>ddk-parent</artifactId>
     <groupId>com.avaloq.tools.ddk</groupId>
+    <artifactId>ddk-core-parent</artifactId>
     <version>17.2.0-SNAPSHOT</version>
-    <relativePath>../ddk-parent</relativePath>
+    <relativePath>../ddk-core-parent</relativePath>
   </parent>
-  <groupId>com.avaloq.tools.ddk</groupId>
+
   <artifactId>com.avaloq.tools.ddk.xtext.format.generator</artifactId>
-  <packaging>eclipse-plugin</packaging>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk.xtext.format</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk.xtext.generator</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.xtext.generator</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.jdt</groupId>
+      <artifactId>org.eclipse.jdt.core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <configuration>
+          <bnd><![CDATA[
+Bundle-SymbolicName: ${project.artifactId};singleton:=true
+Bundle-Vendor: Avaloq Group AG
+Export-Package: \
+  com.avaloq.tools.ddk.xtext.format.generator
+Import-Package: *
+          ]]></bnd>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

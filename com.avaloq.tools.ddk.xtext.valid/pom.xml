@@ -1,12 +1,90 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <artifactId>ddk-parent</artifactId>
     <groupId>com.avaloq.tools.ddk</groupId>
+    <artifactId>ddk-core-parent</artifactId>
     <version>17.2.0-SNAPSHOT</version>
-    <relativePath>../ddk-parent</relativePath>
+    <relativePath>../ddk-core-parent</relativePath>
   </parent>
 
   <artifactId>com.avaloq.tools.ddk.xtext.valid</artifactId>
-  <packaging>eclipse-plugin</packaging>
+  <packaging>jar</packaging>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.util</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.emf</groupId>
+      <artifactId>org.eclipse.emf.ecore</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.emf</groupId>
+      <artifactId>org.eclipse.emf.common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>antlr-runtime</artifactId>
+      <version>3.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.avaloq.tools.ddk</groupId>
+      <artifactId>com.avaloq.tools.ddk.xtext</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.xbase.lib</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <sourceDirectory>src</sourceDirectory>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.1</version>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals><goal>add-source</goal></goals>
+            <configuration>
+              <sources>
+                <source>src-gen</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>biz.aQute.bnd</groupId>
+        <artifactId>bnd-maven-plugin</artifactId>
+        <configuration>
+          <bnd><![CDATA[
+Bundle-SymbolicName: ${project.artifactId};singleton:=true
+Bundle-Vendor: Avaloq Group AG
+Export-Package: \
+  com.avaloq.tools.ddk.xtext.valid,\
+  com.avaloq.tools.ddk.xtext.valid.parser.antlr,\
+  com.avaloq.tools.ddk.xtext.valid.parser.antlr.internal,\
+  com.avaloq.tools.ddk.xtext.valid.scoping,\
+  com.avaloq.tools.ddk.xtext.valid.services,\
+  com.avaloq.tools.ddk.xtext.valid.valid,\
+  com.avaloq.tools.ddk.xtext.valid.valid.impl,\
+  com.avaloq.tools.ddk.xtext.valid.valid.util,\
+  com.avaloq.tools.ddk.xtext.valid.validation,\
+  com.avaloq.tools.ddk.xtext.valid.formatting,\
+  com.avaloq.tools.ddk.xtext.valid.serializer
+Import-Package: *
+          ]]></bnd>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
 </project>

@@ -7,3 +7,6 @@
 *.xtendbin
 /*/xtend-gen/*
 !/*/xtend-gen/.gitignore
+.nx/
+node_modules/
+HANDOVER.md
