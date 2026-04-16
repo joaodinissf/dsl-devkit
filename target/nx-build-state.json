@@ -1,0 +1,24 @@
+{
+  "compileSourceRoots": [
+    "src/main/java"
+  ],
+  "testCompileSourceRoots": [
+    "src/test/java"
+  ],
+  "resources": [
+    "src/main/resources"
+  ],
+  "testResources": [
+    "src/test/resources"
+  ],
+  "outputDirectory": "target/classes",
+  "testOutputDirectory": "target/test-classes",
+  "compileClasspath": [
+    "target/classes"
+  ],
+  "testClasspath": [
+    "target/test-classes",
+    "target/classes"
+  ],
+  "attachedArtifacts": []
+}

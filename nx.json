@@ -1,0 +1,7 @@
+{
+  "plugins": [
+    "@nx/maven"
+  ],
+  "defaultBase": "master",
+  "analytics": false
+}
