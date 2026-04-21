@@ -3,7 +3,7 @@ name: publish
 on:
   workflow_dispatch: {}
   push:
-    branches: [master]
+    branches: [master, ci-publish-artifacts]
     tags: ['v*']
 
 concurrency:
