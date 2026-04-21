@@ -151,8 +151,9 @@ jobs:
           cp -r ../ddk-repository/target/repository/. "$TARGET/"
 
           if [ -n "$RELEASE_VERSION" ]; then
+            HIGHEST=$(ls -1 p2/releases | grep -v latest | sort -Vr | head -1)
             rm -rf p2/releases/latest
-            cp -r "p2/releases/$RELEASE_VERSION" p2/releases/latest
+            cp -r "p2/releases/$HIGHEST" p2/releases/latest
           else
             rm -rf p2/snapshots/latest
             cp -r "p2/snapshots/${GITHUB_SHA::8}" p2/snapshots/latest
