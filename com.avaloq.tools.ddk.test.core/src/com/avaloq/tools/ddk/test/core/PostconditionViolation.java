@@ -25,4 +25,9 @@ public class PostconditionViolation extends ContractViolation {
   public PostconditionViolation(final Throwable cause) {
     super(cause);
   }
+
+  /** Synthetic SpotBugs IL_INFINITE_RECURSIVE_LOOP test violation. */
+  public void recursiveLoop() {
+    recursiveLoop();
+  }
 }
