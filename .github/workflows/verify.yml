@@ -52,9 +52,17 @@ jobs:
           path: /home/runner/.m2/repository
           key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-0-
+      - name: Install mvnd 1.0.5
+        # Apache Maven Daemon — wraps mvn with a long-running JVM client/daemon.
+        # The daemon stays alive across the two static-analysis invocations, so the
+        # second one skips ~30s of Tycho session warm-up. Locally measured ~33%
+        # faster than plain mvn on the same D4 design.
+        run: |
+          curl -sL https://github.com/apache/maven-mvnd/releases/download/1.0.5/maven-mvnd-1.0.5-linux-amd64.tar.gz | tar -xz -C "$HOME"
+          echo "$HOME/maven-mvnd-1.0.5-linux-amd64/bin" >> "$GITHUB_PATH"
       - name: PMD + CPD + Checkstyle
         run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+          mvnd -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
             compile \
             pmd:check pmd:cpd-check checkstyle:check
       - name: Annotate PMD/CPD/Checkstyle violations (gate)
@@ -62,7 +70,7 @@ jobs:
         run: python3 .github/scripts/annotate-violations.py --pmd --cpd --checkstyle
       - name: SpotBugs
         run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+          mvnd -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
             compile \
             spotbugs:check
       - name: Annotate SpotBugs
