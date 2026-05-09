@@ -3,31 +3,13 @@ on:
   push:
     branches: [master]
   pull_request:
+
+# Code Scanning needs write access to upload SARIF results
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
-  pmd:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: PMD Check
-        run: mvn pmd:pmd pmd:cpd pmd:check pmd:cpd-check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
-  checkstyle:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Checkstyle Check
-        run: mvn checkstyle:checkstyle checkstyle:check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
   line-endings:
     runs-on: ubuntu-24.04
     steps:
@@ -46,6 +28,179 @@ jobs:
             echo "$violations"
             exit 1
           fi
+
+  static-analysis:
+    # SARIF + GitHub Code Scanning design (Option F):
+    #
+    # Each analyzer emits SARIF; SARIF is uploaded to Code Scanning for inline
+    # annotations + Security tab. The workflow gates on SARIF result counts via
+    # a small jq step (no Python script). Two `mvnd` invocations preserve fail-fast:
+    # SpotBugs only runs if PMD/Checkstyle/CPD passed.
+    #
+    # `--fail-never` suppresses MojoFailureException (per-module violation throws)
+    # so every module's report is generated. Compile errors still halt
+    # (MojoExecutionException is unsuppressed).
+    #
+    # CPD note: maven-pmd-plugin doesn't expose SARIF for CPD — only XML. We grep
+    # cpd.xml for <duplication> elements as part of the gate. Real CPD violations
+    # are rare; UI gap is acceptable.
+    runs-on: ubuntu-24.04
+    env:
+      MAVEN_OPTS: -Xmx4g
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Set up Workspace Environment Variable
+        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
+      - name: Cache Maven dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
+        with:
+          path: /home/runner/.m2/repository
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-0-
+
+      - name: Install mvnd 1.0.5
+        # Apache Maven Daemon — the daemon JVM stays warm across the two
+        # static-analysis invocations, skipping ~30s of Tycho session warm-up
+        # on the second call.
+        run: |
+          curl -sL https://github.com/apache/maven-mvnd/releases/download/1.0.5/maven-mvnd-1.0.5-linux-amd64.tar.gz | tar -xz -C "$HOME"
+          echo "$HOME/maven-mvnd-1.0.5-linux-amd64/bin" >> "$GITHUB_PATH"
+
+      - name: PMD + Checkstyle reports
+        # PMD: SarifRenderer FQCN — emits pmd.sarif.json AND keeps pmd.xml.
+        # Checkstyle: output.format=sarif — content is SARIF in checkstyle-result.xml
+        #   (filename keeps .xml; content is SARIF JSON).
+        # CPD is excluded from this invocation: the `-Dformat=...` flag is global
+        # and CPD uses a different renderer hierarchy (CPDReportRenderer, not
+        # Renderer); passing the PMD renderer FQCN here would ClassCastException CPD.
+        run: |
+          mvnd -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+            compile \
+            pmd:pmd checkstyle:checkstyle \
+            -Dformat=net.sourceforge.pmd.renderers.SarifRenderer \
+            -Dcheckstyle.output.format=sarif
+
+      - name: CPD report (separate invocation — no SARIF support)
+        # CPD has no SARIF renderer in maven-pmd-plugin; emits cpd.xml only.
+        # Run it standalone so the PMD-format flag isn't in scope. mvnd's daemon
+        # stays warm so this is cheap (~30s including session reuse).
+        # NOTE: project-level threshold is 100k tokens (issue #1339), which
+        # effectively disables CPD detection. Re-tune to ~100 once #1339 lands.
+        run: |
+          mvnd -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+            compile \
+            pmd:cpd-check
+
+      - name: Merge per-module SARIFs (PMD + Checkstyle)
+        if: always()
+        # GitHub Code Scanning (2025-07-21 policy change) only accepts ONE run per
+        # category in an upload. Each analyzer produces one SARIF per module, so
+        # we merge them into a single SARIF with a single run whose `results[]`
+        # is the concatenation of all modules' results.
+        # Output goes to .sarif-merged/<analyzer>.sarif so upload-sarif sees only
+        # the merged files.
+        run: |
+          mkdir -p .sarif-merged
+          # PMD: aggregate per-module pmd.sarif.json
+          pmd_files=$(find . -path '*/target/pmd.sarif.json')
+          if [ -n "$pmd_files" ]; then
+            jq -s '
+              {
+                "$schema": .[0]."$schema",
+                "version": .[0].version,
+                "runs": [{
+                  "tool": .[0].runs[0].tool,
+                  "results": [.[].runs[].results[]?],
+                  "invocations": [.[].runs[].invocations[]?]
+                }]
+              }
+            ' $pmd_files > .sarif-merged/pmd.sarif
+          fi
+          # Checkstyle: aggregate per-module checkstyle-result.xml (SARIF inside)
+          cs_files=$(find . -path '*/target/checkstyle-result.xml')
+          if [ -n "$cs_files" ]; then
+            jq -s '
+              {
+                "$schema": .[0]."$schema",
+                "version": .[0].version,
+                "runs": [{
+                  "tool": .[0].runs[0].tool,
+                  "results": [.[].runs[].results[]?],
+                  "invocations": [.[].runs[].invocations[]?]
+                }]
+              }
+            ' $cs_files > .sarif-merged/checkstyle.sarif
+          fi
+
+      - name: Gate on PMD/CPD/Checkstyle violations
+        # Read merged SARIFs (single run, all results concatenated). CPD has no
+        # SARIF — grep cpd.xml for <duplication> elements separately.
+        run: |
+          set -eu
+          sarif_total=$(jq '[.runs[].results[]?] | length' .sarif-merged/pmd.sarif .sarif-merged/checkstyle.sarif 2>/dev/null \
+            | awk '{s+=$1} END {print s+0}')
+          cpd_total=$(find . -name 'cpd.xml' -path '*/target/*' -exec grep -c '<duplication ' {} + 2>/dev/null \
+            | awk -F: '{s+=$2} END {print s+0}')
+          echo "PMD/Checkstyle SARIF violations: $sarif_total"
+          echo "CPD duplications: $cpd_total"
+          if [ "$sarif_total" != "0" ] || [ "$cpd_total" != "0" ]; then
+            echo "::error::Static analysis found violations (PMD/CPD/Checkstyle)."
+            exit 1
+          fi
+
+      - name: SpotBugs report
+        # Only runs if previous gate passed (default workflow-step semantics).
+        # sarifOutput=true emits spotbugsSarif.json; spotbugsXml.xml also written.
+        run: |
+          mvnd -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+            compile \
+            spotbugs:spotbugs \
+            -Dspotbugs.sarifOutput=true
+
+      - name: Merge per-module SpotBugs SARIFs
+        if: always()
+        # Same merge pattern as PMD/Checkstyle — single run, all results.
+        run: |
+          mkdir -p .sarif-merged
+          sb_files=$(find . -path '*/target/spotbugsSarif.json')
+          if [ -n "$sb_files" ]; then
+            jq -s '
+              {
+                "$schema": .[0]."$schema",
+                "version": .[0].version,
+                "runs": [{
+                  "tool": .[0].runs[0].tool,
+                  "results": [.[].runs[].results[]?],
+                  "invocations": [.[].runs[].invocations[]?]
+                }]
+              }
+            ' $sb_files > .sarif-merged/spotbugs.sarif
+          fi
+
+      - name: Gate on SpotBugs violations
+        run: |
+          set -eu
+          sb_total=$(jq '[.runs[].results[]?] | length' .sarif-merged/spotbugs.sarif 2>/dev/null || echo 0)
+          echo "SpotBugs SARIF violations: $sb_total"
+          if [ "$sb_total" != "0" ]; then
+            echo "::error::SpotBugs found violations."
+            exit 1
+          fi
+
+      - name: Upload SARIF to Code Scanning
+        # if: always() so violations and partial reports still reach Code Scanning
+        # for the Security tab UI even when the workflow fails. Uploads the merged
+        # SARIFs (one per analyzer = one run per category, satisfying GitHub's
+        # 2025-07-21 single-run-per-category policy).
+        if: always()
+        uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4  # v3.35.4
+        with:
+          sarif_file: .sarif-merged
+
   maven-verify:
     runs-on: ubuntu-24.04
     steps:
@@ -64,10 +219,9 @@ jobs:
         with:
           path: /home/runner/.m2/repository
           key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
-      - name: Build with Maven  within a virtual X Server Environment
-        # Run pmd:pmd and pmd:cpd first to generate reports for all modules, then run pmd:check and pmd:cpd-check
-        # This ensures all violations are collected and reported before the build fails
-        run: xvfb-run mvn clean verify checkstyle:check pmd:pmd pmd:cpd pmd:check pmd:cpd-check spotbugs:check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
+          restore-keys: ${{ runner.os }}-maven-0-
+      - name: Build with Maven within a virtual X Server Environment
+        run: xvfb-run mvn clean verify -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
       - name: Fail on missing surefire reports
         # Tycho-Surefire writes no TEST-*.xml when discovery is empty — fail the job in that case.
         if: always()
