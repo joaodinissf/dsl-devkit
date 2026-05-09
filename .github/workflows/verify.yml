@@ -4,39 +4,14 @@ on:
     branches: [master]
   pull_request:
 jobs:
-  pmd:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: PMD Check
-        run: mvn pmd:pmd pmd:cpd pmd:check pmd:cpd-check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
-  checkstyle:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
-      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Checkstyle Check
-        run: mvn checkstyle:checkstyle checkstyle:check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
   line-endings:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
       - name: Check LF line endings in index
-        # .gitattributes declares `* text=auto eol=lf` with .bat/.cmd/.ps1
-        # exempted. Git's clean filter normalizes on commit, but verify it
-        # explicitly in case a file is miscategorized as binary or a filter
-        # is bypassed.
+        # .gitattributes declares `* text=auto eol=lf` with .bat/.cmd/.ps1 exempted.
+        # Git's clean filter normalizes on commit, but verify it explicitly in case a
+        # file is miscategorized as binary or a filter is bypassed.
         run: |
           violations=$(git ls-files --eol \
             | grep -E "^i/(crlf|mixed)" \
@@ -46,6 +21,54 @@ jobs:
             echo "$violations"
             exit 1
           fi
+
+  static-analysis:
+    # Two sequential `mvn` invocations within one job:
+    #   1. PMD + CPD + Checkstyle generate reports (--fail-never so per-module check
+    #      throws don't halt the reactor; complete report coverage)
+    #   2. Python step parses the reports and acts as the workflow-level gate
+    #      (exits 1 if any violation, which skips step 3)
+    #   3. SpotBugs runs only when step 2 passed — fail-fast on PMD/CS, ~7m saved
+    #      on red runs
+    # Maven's `--fail-never` lets the reactor finish all modules before any failure
+    # is final, so XML reports exist for every module regardless of which violated.
+    # Compile errors halt the reactor at compile phase; they're not silenced by
+    # `--fail-never` because compile throws MojoExecutionException, not just
+    # MojoFailureException. The parallel `maven-verify` job catches them too.
+    runs-on: ubuntu-24.04
+    env:
+      MAVEN_OPTS: -Xmx4g
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Set up Workspace Environment Variable
+        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
+      - name: Cache Maven dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5
+        with:
+          path: /home/runner/.m2/repository
+          key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-0-
+      - name: PMD + CPD + Checkstyle
+        run: |
+          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+            compile \
+            pmd:check pmd:cpd-check checkstyle:check
+      - name: Annotate PMD/CPD/Checkstyle violations (gate)
+        if: always()
+        run: python3 .github/scripts/annotate-violations.py --pmd --cpd --checkstyle
+      - name: SpotBugs
+        run: |
+          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+            compile \
+            spotbugs:check
+      - name: Annotate SpotBugs
+        if: always()
+        run: python3 .github/scripts/annotate-violations.py --spotbugs
+
   maven-verify:
     runs-on: ubuntu-24.04
     steps:
@@ -64,10 +87,9 @@ jobs:
         with:
           path: /home/runner/.m2/repository
           key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
-      - name: Build with Maven  within a virtual X Server Environment
-        # Run pmd:pmd and pmd:cpd first to generate reports for all modules, then run pmd:check and pmd:cpd-check
-        # This ensures all violations are collected and reported before the build fails
-        run: xvfb-run mvn clean verify checkstyle:check pmd:pmd pmd:cpd pmd:check pmd:cpd-check spotbugs:check -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
+          restore-keys: ${{ runner.os }}-maven-0-
+      - name: Build with Maven within a virtual X Server Environment
+        run: xvfb-run mvn clean verify -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
       - name: Fail on missing surefire reports
         # Tycho-Surefire writes no TEST-*.xml when discovery is empty — fail the job in that case.
         if: always()
