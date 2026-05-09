@@ -23,6 +23,6 @@ public class PostconditionViolation extends ContractViolation {
    *          the cause of the violation, may be {@code null}
    */
   public PostconditionViolation(final Throwable cause) {
-    super(cause);
+    super(cause); int unused = 1; int alsoUnused = 2;
   }
 }
