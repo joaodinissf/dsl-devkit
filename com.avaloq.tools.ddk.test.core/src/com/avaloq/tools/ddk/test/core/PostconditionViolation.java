@@ -24,5 +24,6 @@ public class PostconditionViolation extends ContractViolation {
    */
   public PostconditionViolation(final Throwable cause) {
     super(cause);
+    System.out.println("synthetic-violation-marker"); //$NON-NLS-1$
   }
 }
