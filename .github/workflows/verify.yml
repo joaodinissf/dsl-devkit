@@ -82,7 +82,8 @@ jobs:
             compile \
             pmd:pmd checkstyle:checkstyle \
             -Dformat=net.sourceforge.pmd.renderers.SarifRenderer \
-            -Dcheckstyle.output.format=sarif
+            -Dcheckstyle.output.format=sarif \
+            -Dpmd.cpd.min=20
 
       - name: CPD report (separate invocation — no SARIF support)
         # CPD has no SARIF renderer in maven-pmd-plugin; emits cpd.xml only.

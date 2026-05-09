@@ -25,4 +25,26 @@ public class PostconditionViolation extends ContractViolation {
   public PostconditionViolation(final Throwable cause) {
     super(cause);
   }
+
+  // Synthetic CPD test: duplicated block A
+  public int compute1(int x) {
+    int a = x + 1;
+    int b = a * 2;
+    int c = b - 3;
+    int d = c + 4;
+    int e = d * 5;
+    int f = e - 6;
+    return f + a + b + c + d + e;
+  }
+
+  // Synthetic CPD test: duplicated block B (identical to A)
+  public int compute2(int x) {
+    int a = x + 1;
+    int b = a * 2;
+    int c = b - 3;
+    int d = c + 4;
+    int e = d * 5;
+    int f = e - 6;
+    return f + a + b + c + d + e;
+  }
 }
