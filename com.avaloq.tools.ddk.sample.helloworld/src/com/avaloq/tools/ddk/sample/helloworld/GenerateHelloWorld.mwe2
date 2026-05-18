@@ -62,6 +62,11 @@ Workflow {
         bundle = "org.eclipse.xtext.xbase.lib"
         bundle = "org.antlr.runtime"
       }
+
+      // [PoC] Langium feasibility - emit a .langium grammar alongside Xtext output
+      fragment = io.typefox.xtext2langium.Xtext2LangiumFragment {
+        outputPath = "../com.avaloq.tools.ddk.sample.helloworld/langium"
+      }
     }
   }
 }

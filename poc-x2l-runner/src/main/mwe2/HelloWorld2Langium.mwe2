@@ -1,0 +1,69 @@
+module com.avaloq.poc.HelloWorld2Langium
+
+import org.eclipse.emf.mwe.utils.*
+import org.eclipse.xtext.xtext.generator.*
+import org.eclipse.xtext.xtext.generator.model.project.*
+
+var rootPath = ".."
+var grammarPath = "../com.avaloq.tools.ddk.sample.helloworld/src/com/avaloq/tools/ddk/sample/helloworld/HelloWorld.xtext"
+
+Workflow {
+
+  bean = StandaloneSetup {
+    scanClassPath = true
+    platformUri = "${rootPath}"
+  }
+
+  component = XtextGenerator {
+    configuration = {
+      project = StandardProjectConfig {
+        baseName = "com.avaloq.poc.helloworld"
+        rootPath = "."
+        runtime = {
+          enabled = false
+        }
+        genericIde = {
+          enabled = false
+        }
+        eclipsePlugin = {
+          enabled = false
+        }
+        web = {
+          enabled = false
+        }
+        createEclipseMetaData = false
+      }
+      code = {
+        encoding = "UTF-8"
+        lineDelimiter = "\n"
+      }
+    }
+    language = StandardLanguage {
+      name = "com.avaloq.tools.ddk.sample.helloworld.HelloWorld"
+      fileExtensions = "helloworld"
+      grammarUri = "file:${grammarPath}"
+
+      // disable everything except xtext2langium fragment
+      parserGenerator = {
+        debugGrammar = false
+      }
+      serializer = {
+        generateStub = false
+      }
+      validator = {
+        generateStub = false
+      }
+      generator = {
+        generateStub = false
+      }
+      scopeProvider = {
+        generateStub = false
+      }
+
+      // The fragment under test
+      fragment = io.typefox.xtext2langium.Xtext2LangiumFragment {
+        outputPath = "./out/helloworld"
+      }
+    }
+  }
+}

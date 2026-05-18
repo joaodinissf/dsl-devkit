@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.avaloq.poc</groupId>
+  <artifactId>poc-x2l-runner</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>jar</packaging>
+
+  <!-- Standalone runner: NOT part of the Tycho reactor (not listed in ddk-parent/pom.xml).
+       Pulls Xtext + xtext2langium from Maven Central and runs Mwe2Launcher
+       on a minimal workflow that emits only the Langium artifacts. -->
+
+  <properties>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <xtext.version>2.42.0</xtext.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.xtext.generator</artifactId>
+      <version>${xtext.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtext</groupId>
+      <artifactId>org.eclipse.xtext.xbase</artifactId>
+      <version>${xtext.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.emf</groupId>
+      <artifactId>org.eclipse.emf.mwe2.launch</artifactId>
+      <version>2.16.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.eclipse.xtend</groupId>
+      <artifactId>org.eclipse.xtend.lib</artifactId>
+      <version>2.42.0</version>
+    </dependency>
+    <dependency>
+      <groupId>io.typefox.xtext2langium</groupId>
+      <artifactId>io.typefox.xtext2langium</artifactId>
+      <version>0.4.0</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.5.0</version>
+        <configuration>
+          <mainClass>com.avaloq.poc.RunX2L</mainClass>
+        </configuration>
+      </plugin>
+    </plugins>
+  </build>
+</project>

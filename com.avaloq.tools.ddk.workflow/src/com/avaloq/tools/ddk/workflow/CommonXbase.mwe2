@@ -207,6 +207,11 @@ Workflow {
         bundle = "org.eclipse.xtend.lib"
         bundle = "org.objectweb.asm"
       }
+
+      // [PoC] Langium feasibility - emit a .langium grammar + type-defs alongside Xtext output
+      fragment = io.typefox.xtext2langium.Xtext2LangiumFragment {
+        outputPath = "../${projectNameRt}/langium"
+      }
     }
   }
 }
