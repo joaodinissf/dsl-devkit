@@ -139,3 +139,5 @@ public class AbstractSelectorFragmentProviderTest {
 
   }
 }
+
+// scoped-spotbugs probe: harmless comment to exercise onlyAnalyze
