@@ -117,6 +117,8 @@ jobs:
       MAVEN_OPTS: -Xmx4g
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6
+        with:
+          fetch-depth: 0  # need the PR base commit to diff the changed packages
       - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654  # v5
         with:
           distribution: 'temurin'
@@ -130,13 +132,34 @@ jobs:
           key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-maven-0-
 
-      - name: SpotBugs report (SARIF)
-        # sarifOutput=true emits spotbugsSarif.json (also writes spotbugsXml.xml).
+      - name: Compute SpotBugs scope (changed packages)
+        id: scope
+        # Map the PR's changed Java packages to a spotbugs.onlyAnalyze value, so
+        # we compile the full reactor but only analyze the packages this PR
+        # touched. Build/config changes -> full scan; no Java changes -> skip.
+        run: bash .github/scripts/compute-spotbugs-scope.sh "${{ github.event.pull_request.base.sha }}"
+
+      - name: SpotBugs report (SARIF, scoped to changed packages)
+        # Full-reactor compile (correct aux-classpath) + analysis scoped per
+        # steps.scope. sarifOutput=true emits spotbugsSarif.json. The scope value
+        # is passed via env (not inlined) and quoted in an array so the package
+        # wildcards are not glob-expanded by the shell.
+        env:
+          SCOPE: ${{ steps.scope.outputs.scope }}
+          ONLY_ANALYZE: ${{ steps.scope.outputs.onlyAnalyze }}
         run: |
+          set -eu
+          case "$SCOPE" in
+            skip) echo "No analyzable Java changes; skipping SpotBugs."; exit 0 ;;
+            full) ARGS=() ;;
+            only) ARGS=(-Dspotbugs.onlyAnalyze="$ONLY_ANALYZE") ;;
+            *) echo "::error::unknown SpotBugs scope '$SCOPE'"; exit 1 ;;
+          esac
           mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
             compile \
             spotbugs:spotbugs \
-            -Dspotbugs.sarifOutput=true
+            -Dspotbugs.sarifOutput=true \
+            "${ARGS[@]}"
 
       - name: Merge per-module SpotBugs SARIFs
         if: always()
@@ -166,7 +189,7 @@ jobs:
           fi
 
       - name: Upload SpotBugs SARIF to Code Scanning
-        if: always()
+        if: ${{ always() && steps.scope.outputs.scope != 'skip' }}
         uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4  # v3.35.4
         with:
           sarif_file: .sarif-merged
