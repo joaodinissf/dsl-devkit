@@ -401,11 +401,14 @@
         </dependencies>
         <configuration>
           <failOnError>true</failOnError>
+          <!-- Per-analysis (forked) heap. A second <maxHeap>1024</maxHeap> used to follow and
+               silently override this, leaving spotbugs.maxHeap (2048) dead; removed. NOTE: under
+               -T 2C a full scan can run up to ~8 forks concurrently (~8x2G + maven 4G ~ 20G > the
+               16G runner) — if the full-scan spotbugs job OOMs, lower this or the reactor thread count. -->
           <maxHeap>${spotbugs.maxHeap}</maxHeap>
           <maxRank>15</maxRank>
           <threshold>Low</threshold>
           <excludeFilterFile>${spotbugs.excludeFilterFile}</excludeFilterFile>
-          <maxHeap>1024</maxHeap>
         </configuration>
       </plugin>
     </plugins>
