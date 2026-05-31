@@ -68,3 +68,5 @@ public abstract class AbstractDynamicSetupService implements IDynamicSetupServic
   public abstract String getLanguageName();
 
 }
+
+// pom-skip probe: harmless comment to exercise per-module skip scoping
