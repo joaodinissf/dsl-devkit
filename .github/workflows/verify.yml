@@ -50,6 +50,7 @@ jobs:
         with:
           path: /home/runner/.m2/repository
           key: ${{ runner.os }}-maven-0-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-0-
       - name: Build with Maven  within a virtual X Server Environment
         # Run pmd:pmd and pmd:cpd first to generate reports for all modules, then run pmd:check and pmd:cpd-check
         # This ensures all violations are collected and reported before the build fails
