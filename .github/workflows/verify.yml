@@ -137,10 +137,11 @@ jobs:
           restore-keys: ${{ runner.os }}-maven-publish-
 
       - name: Scope SpotBugs to the PR's changed modules
-        # Injects <spotbugs.skip>true> into unchanged module poms so the per-module
-        # SpotBugs fork is skipped for them (the lever that actually scopes the cost).
-        # Full compile is preserved (correct aux-classpath); a build/config change ->
-        # full scan. pull_request only; master/snapshot run a full scan.
+        # Injects <spotbugs.skip>true> into unchanged module poms so their analysis is
+        # skipped, and exports SPOTBUGS_SCOPE_ARGS (-pl <changed> -am) so only the
+        # changed modules and their upstream deps build at all (skip-injected deps
+        # compile for the aux-classpath but are not analysed). A build/config change ->
+        # full scan, full reactor. pull_request only; master/snapshot run a full scan.
         run: bash .github/scripts/compute-spotbugs-skip.sh "${{ github.event.pull_request.base.sha }}"
 
       - name: SpotBugs report (SARIF)
@@ -153,7 +154,7 @@ jobs:
         # JVM per module (59 forks); the shared heap is governed by MAVEN_OPTS above
         # (the plugin's maxHeap applies to forks only).
         run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+          mvn -T 2C -f ./ddk-parent/pom.xml ${SPOTBUGS_SCOPE_ARGS:-} --batch-mode --fail-never \
             compile \
             spotbugs:spotbugs \
             -Dspotbugs.sarifOutput=true \

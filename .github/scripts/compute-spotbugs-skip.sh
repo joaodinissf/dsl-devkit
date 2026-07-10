@@ -14,7 +14,12 @@
 # only trimmed ~17% of the goal vs ~88% for this per-module skip (measured on this
 # reactor). A small upstream SpotBugs early-exit (skip the run when no application class
 # matches the screener) would make onlyAnalyze competitive; if that ever lands, switch
-# to onlyAnalyze and delete this script.
+# to onlyAnalyze and delete this script (tracked in #1455 / spotbugs/spotbugs#3796).
+#
+# On top of the skips, the changed reactor modules are exported as SPOTBUGS_SCOPE_ARGS
+# ("-pl <changed> -am") so the lane builds only those modules plus their upstream
+# dependencies instead of the full reactor. The -am-pulled unchanged dependencies still
+# carry the injected skip: they compile (complete aux-classpath) but are not analysed.
 #
 # Run from the repository root.  Usage: compute-spotbugs-skip.sh <base-sha>
 set -euo pipefail
@@ -62,10 +67,12 @@ inject_skip() {
 # 5) Skip every reactor module that was not touched by this PR.
 kept=0
 skipped=0
+kept_pl=""
 while IFS= read -r mod; do
   [ -n "$mod" ] || continue
   if printf '%s\n' "${changed_mods}" | grep -qx "$mod"; then
     kept=$((kept + 1))
+    kept_pl="${kept_pl:+${kept_pl},}../${mod}"
   else
     inject_skip "$mod"
     skipped=$((skipped + 1))
@@ -74,5 +81,17 @@ done <<EOF
 ${module_dirs}
 EOF
 
+# 6) Scope the reactor to the changed modules + their upstream dependencies. With no
+#    changed reactor module (e.g. a docs-only PR) the full reactor builds with every
+#    analysis skipped — same result, no flags needed.
+if [ "$kept" -gt 0 ] && [ -n "${GITHUB_ENV:-}" ]; then
+  echo "SPOTBUGS_SCOPE_ARGS=-pl ${kept_pl} -am" >> "$GITHUB_ENV"
+fi
+
 echo "SpotBugs scope: scanning ${kept} changed module(s), skipping ${skipped} unchanged."
 echo "Changed modules: ${changed_mods:-<none>}"
+if [ -n "${kept_pl}" ]; then
+  echo "Reactor scope args: -pl ${kept_pl} -am"
+else
+  echo "Reactor scope args: <full reactor>"
+fi
