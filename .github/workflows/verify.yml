@@ -179,8 +179,22 @@ jobs:
           fi
 
       - name: Gate on SpotBugs violations
+        # Presence checks close the vacuous-green hole: --fail-never swallows even
+        # target-platform resolution failures, so "no SARIF produced" must only ever
+        # mean "every module was skip-injected", never "the build silently died".
         run: |
           set -eu
+          for mod in ${SPOTBUGS_EXPECT_REPORTS:-}; do
+            if [ ! -s "${mod}/target/spotbugsSarif.json" ]; then
+              echo "::error::${mod} was scanned but produced no SpotBugs SARIF — a build failure was swallowed by --fail-never."
+              exit 1
+            fi
+          done
+          if [ "${SPOTBUGS_FULL_SCAN:-}" = "true" ] && \
+             [ "$(find . -path '*/target/spotbugsSarif.json' | wc -l)" -eq 0 ]; then
+            echo "::error::Full scan produced no SpotBugs SARIFs — a build failure was swallowed by --fail-never."
+            exit 1
+          fi
           sb_total=$(jq '[.runs[].results[]?] | length' .sarif-merged/spotbugs.sarif 2>/dev/null || echo 0)
           echo "SpotBugs SARIF violations: $sb_total"
           if [ "$sb_total" != "0" ]; then

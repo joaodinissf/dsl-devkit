@@ -34,6 +34,9 @@ while IFS= read -r f; do
   case "$f" in
     pom.xml | ddk-parent/* | .mvn/* | *.target | .github/* | *[Ss]pot[Bb]ugs*[Ee]xclude*)
       echo "Build/config change ($f) -> full SpotBugs scan (no skips)."
+      if [ -n "${GITHUB_ENV:-}" ]; then
+        echo "SPOTBUGS_FULL_SCAN=true" >> "$GITHUB_ENV"
+      fi
       exit 0
       ;;
   esac
@@ -64,15 +67,21 @@ inject_skip() {
   rm -f "$pom.bak"
 }
 
-# 5) Skip every reactor module that was not touched by this PR.
+# 5) Skip every reactor module that was not touched by this PR. Kept modules with a
+#    bundle MANIFEST are expected to produce an analysis report — the gate checks this
+#    so a swallowed resolution/compile failure can never pass as "nothing to scan".
 kept=0
 skipped=0
 kept_pl=""
+expect_reports=""
 while IFS= read -r mod; do
   [ -n "$mod" ] || continue
   if printf '%s\n' "${changed_mods}" | grep -qx "$mod"; then
     kept=$((kept + 1))
     kept_pl="${kept_pl:+${kept_pl},}../${mod}"
+    if [ -f "${mod}/META-INF/MANIFEST.MF" ]; then
+      expect_reports="${expect_reports:+${expect_reports} }${mod}"
+    fi
   else
     inject_skip "$mod"
     skipped=$((skipped + 1))
@@ -81,11 +90,16 @@ done <<EOF
 ${module_dirs}
 EOF
 
-# 6) Scope the reactor to the changed modules + their upstream dependencies. With no
-#    changed reactor module (e.g. a docs-only PR) the full reactor builds with every
-#    analysis skipped — same result, no flags needed.
+# 6) Scope the reactor to the changed modules + their upstream dependencies. ddk-target
+#    is always kept in the -pl list: the target-definition artifact is referenced by
+#    target-platform-configuration, not by any MANIFEST, so -am never pulls it — without
+#    it in the reactor Tycho falls back to a local-repository copy, which fails on a
+#    cold cache and can silently resolve a stale target definition on a warm one.
+#    With no changed reactor module (e.g. a docs-only PR) the full reactor builds with
+#    every analysis skipped — same result, no flags needed.
 if [ "$kept" -gt 0 ] && [ -n "${GITHUB_ENV:-}" ]; then
-  echo "SPOTBUGS_SCOPE_ARGS=-pl ${kept_pl} -am" >> "$GITHUB_ENV"
+  echo "SPOTBUGS_SCOPE_ARGS=-pl ../ddk-target,${kept_pl} -am" >> "$GITHUB_ENV"
+  echo "SPOTBUGS_EXPECT_REPORTS=${expect_reports}" >> "$GITHUB_ENV"
 fi
 
 echo "SpotBugs scope: scanning ${kept} changed module(s), skipping ${skipped} unchanged."
