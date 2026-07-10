@@ -25,6 +25,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 0  # need the PR base commit to diff the changed modules
       - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a  # v5
         with:
           distribution: 'temurin'
@@ -40,17 +42,29 @@ jobs:
           key: ${{ runner.os }}-maven-publish-${{ hashFiles('**/pom.xml', '**/*.target') }}
           restore-keys: ${{ runner.os }}-maven-publish-
 
+      - name: Scope static analysis to the PR's changed modules
+        # Injects pmd/cpd/checkstyle skip properties into unchanged module poms and
+        # exports LINT_SCOPE_ARGS (-pl <changed> -am) so only the changed modules and
+        # their upstream deps build (skip-injected deps compile for PMD's type
+        # resolution but are not analysed). Build/config change -> full scan, full
+        # reactor. pull_request only; master/snapshot run a full scan.
+        run: bash .github/scripts/compute-analysis-skip.sh "${{ github.event.pull_request.base.sha }}" lint
+
       - name: PMD + Checkstyle reports (SARIF)
         # PMD: SarifRenderer FQCN — emits pmd.sarif.json AND keeps pmd.xml.
         # Checkstyle: output.format=sarif — SARIF content in checkstyle-result.xml.
         # CPD is excluded here: the global -Dformat flag uses PMD's Renderer
         # hierarchy and would ClassCastException CPD's CPDReportRenderer.
+        # `compile` stays: PMD's type-resolving rules need Tycho's aux-classpath.
+        # jgit.dirtyWorkingTree=ignore: the scope step edits poms (see the spotbugs
+        # lane for the rationale; this job releases nothing).
         run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+          mvn -T 2C -f ./ddk-parent/pom.xml ${LINT_SCOPE_ARGS:-} --batch-mode --fail-never \
             compile \
             pmd:pmd checkstyle:checkstyle \
             -Dformat=net.sourceforge.pmd.renderers.SarifRenderer \
-            -Dcheckstyle.output.format=sarif
+            -Dcheckstyle.output.format=sarif \
+            -Djgit.dirtyWorkingTree=ignore
 
       - name: CPD report (separate invocation — no SARIF support)
         # CPD has no SARIF renderer; emits cpd.xml only. Run standalone so the
@@ -60,8 +74,10 @@ jobs:
         # compile pass (verified at the current token threshold and at 100).
         # NOTE: project CPD token threshold is currently very high (issue #1339),
         # which effectively disables detection; re-tune once #1339 lands.
+        # No jgit flag needed: a direct goal invocation runs no lifecycle, so the
+        # build-qualifier's dirty-tree check never executes here.
         run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml --batch-mode --fail-never \
+          mvn -T 2C -f ./ddk-parent/pom.xml ${LINT_SCOPE_ARGS:-} --batch-mode --fail-never \
             pmd:cpd-check
 
       - name: Merge per-module SARIFs (PMD + Checkstyle)
@@ -92,8 +108,22 @@ jobs:
           merge '*/target/checkstyle-result.xml' .sarif-merged/checkstyle.sarif
 
       - name: Gate on PMD / CPD / Checkstyle violations
+        # Presence checks close the vacuous-green hole (see the spotbugs gate):
+        # a scanned module must have produced its PMD SARIF, and a full scan must
+        # have produced at least one.
         run: |
           set -eu
+          for mod in ${LINT_EXPECT_REPORTS:-}; do
+            if [ ! -s "${mod}/target/pmd.sarif.json" ]; then
+              echo "::error::${mod} was scanned but produced no PMD SARIF — a build failure was swallowed by --fail-never."
+              exit 1
+            fi
+          done
+          if [ "${LINT_FULL_SCAN:-}" = "true" ] && \
+             [ "$(find . -path '*/target/pmd.sarif.json' | wc -l)" -eq 0 ]; then
+            echo "::error::Full scan produced no PMD SARIFs — a build failure was swallowed by --fail-never."
+            exit 1
+          fi
           sarif_total=$(jq '[.runs[].results[]?] | length' \
             .sarif-merged/pmd.sarif .sarif-merged/checkstyle.sarif 2>/dev/null \
             | awk '{s+=$1} END {print s+0}')
@@ -144,7 +174,7 @@ jobs:
         # changed modules and their upstream deps build at all (skip-injected deps
         # compile for the aux-classpath but are not analysed). A build/config change ->
         # full scan, full reactor. pull_request only; master/snapshot run a full scan.
-        run: bash .github/scripts/compute-spotbugs-skip.sh "${{ github.event.pull_request.base.sha }}"
+        run: bash .github/scripts/compute-analysis-skip.sh "${{ github.event.pull_request.base.sha }}" spotbugs
 
       - name: SpotBugs report (SARIF)
         # sarifOutput=true emits spotbugsSarif.json (also writes spotbugsXml.xml).
