@@ -123,3 +123,5 @@ public class FormatRuntimeModule extends AbstractFormatRuntimeModule {
     binder.bind(IXtextProjectConfig.class).to(XtextProjectConfig.class);
   }
 }
+
+// CI scoped-lint probe (temporary)
