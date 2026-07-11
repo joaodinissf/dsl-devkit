@@ -12,7 +12,7 @@ package com.avaloq.tools.ddk.xtext.format;
 
 
 /**
- * Initialization support for running Xtext languages without Equinox extension registry.
+ * Initialization support for running Xtext languages without the Equinox extension registry.
  */
 public class FormatStandaloneSetup extends FormatStandaloneSetupGenerated {
 
