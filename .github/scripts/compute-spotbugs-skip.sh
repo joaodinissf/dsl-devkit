@@ -14,7 +14,12 @@
 # only trimmed ~17% of the goal vs ~88% for this per-module skip (measured on this
 # reactor). A small upstream SpotBugs early-exit (skip the run when no application class
 # matches the screener) would make onlyAnalyze competitive; if that ever lands, switch
-# to onlyAnalyze and delete this script.
+# to onlyAnalyze and delete this script (tracked in #1455 / spotbugs/spotbugs#3796).
+#
+# On top of the skips, the changed reactor modules are exported as SPOTBUGS_SCOPE_ARGS
+# ("-pl <changed> -am") so the lane builds only those modules plus their upstream
+# dependencies instead of the full reactor. The -am-pulled unchanged dependencies still
+# carry the injected skip: they compile (complete aux-classpath) but are not analysed.
 #
 # Run from the repository root.  Usage: compute-spotbugs-skip.sh <base-sha>
 set -euo pipefail
@@ -28,6 +33,12 @@ while IFS= read -r f; do
   [ -n "$f" ] || continue
   case "$f" in
     pom.xml | ddk-parent/* | .mvn/* | *.target | .github/* | *[Ss]pot[Bb]ugs*[Ee]xclude*)
+      # KEPT must be set on every path: in a workflow `if:` an unset env var is
+      # null, which coerces to 0 and compares EQUAL to '0' — wrongly skipping
+      # the build. "all" marks the full-scan case (only "0" relaxes the gate).
+      if [ -n "${GITHUB_ENV:-}" ]; then
+        echo "SPOTBUGS_KEPT=all" >> "$GITHUB_ENV"
+      fi
       echo "Build/config change ($f) -> full SpotBugs scan (no skips)."
       exit 0
       ;;
@@ -61,13 +72,23 @@ inject_skip() {
   rm -f "$pom.bak"
 }
 
-# 5) Skip every reactor module that was not touched by this PR.
+# 5) Skip every reactor module that was not touched by this PR. Kept modules with a
+#    bundle MANIFEST are expected to produce an analysis report — the gate checks this
+#    so a swallowed resolution/compile failure can never pass as "nothing to scan".
 kept=0
 skipped=0
+kept_pl=""
+expect_reports=""
 while IFS= read -r mod; do
   [ -n "$mod" ] || continue
   if printf '%s\n' "${changed_mods}" | grep -qx "$mod"; then
     kept=$((kept + 1))
+    kept_pl="${kept_pl:+${kept_pl},}../${mod}"
+    # Only bundles with sources reliably emit a report (a source-less bundle,
+    # e.g. pure branding, has nothing for the analyzer to write a SARIF about).
+    if [ -f "${mod}/META-INF/MANIFEST.MF" ] && [ -d "${mod}/src" ]; then
+      expect_reports="${expect_reports:+${expect_reports} }${mod}"
+    fi
   else
     inject_skip "$mod"
     skipped=$((skipped + 1))
@@ -82,5 +103,22 @@ if [ -n "${GITHUB_ENV:-}" ]; then
   echo "SPOTBUGS_KEPT=${kept}" >> "$GITHUB_ENV"
 fi
 
+# 6) Scope the reactor to the changed modules + their upstream dependencies. ddk-target
+#    is always kept in the -pl list: the target-definition artifact is referenced by
+#    target-platform-configuration, not by any MANIFEST, so -am never pulls it — without
+#    it in the reactor Tycho falls back to a local-repository copy, which fails on a
+#    cold cache and can silently resolve a stale target definition on a warm one.
+#    With no changed reactor module (e.g. a docs-only PR) no scope args are exported;
+#    the workflow skips the Maven step entirely on SPOTBUGS_KEPT=0.
+if [ "$kept" -gt 0 ] && [ -n "${GITHUB_ENV:-}" ]; then
+  echo "SPOTBUGS_SCOPE_ARGS=-pl ../ddk-target,${kept_pl} -am" >> "$GITHUB_ENV"
+  echo "SPOTBUGS_EXPECT_REPORTS=${expect_reports}" >> "$GITHUB_ENV"
+fi
+
 echo "SpotBugs scope: scanning ${kept} changed module(s), skipping ${skipped} unchanged."
 echo "Changed modules: ${changed_mods:-<none>}"
+if [ -n "${kept_pl}" ]; then
+  echo "Reactor scope args: -pl ../ddk-target,${kept_pl} -am"
+else
+  echo "Reactor scope args: <full reactor>"
+fi
