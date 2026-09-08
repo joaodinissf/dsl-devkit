@@ -19,8 +19,12 @@ git -c commit.gpgsign=false -c user.name=Reproducer -c user.email=reproducer@exa
 From the root of the checkout:
 
 ```sh
-mvn verify -f ddk-parent/pom.xml --batch-mode --fail-at-end
+mvn integration-test -f ddk-parent/pom.xml --batch-mode --fail-at-end
 ```
+
+The `integration-test` phase runs the aggregator without the later release-baseline
+verification, which needs the original Git history. For a normal repository checkout,
+use `verify` when validating a fix.
 
 On Linux, prefix that command with `xvfb-run`. On macOS the Maven profile supplies
 the required SWT main-thread option. All tests run in the existing
