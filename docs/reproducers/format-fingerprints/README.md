@@ -7,7 +7,16 @@ required.
 
 ## Run
 
-Use JDK 21 and Maven. From the root of this checkout:
+Use JDK 21 and Maven. A Git checkout is required by Tycho's version qualifier.
+When using the downloadable source ZIP, extract it and initialize it first:
+
+```sh
+git init
+git add .
+git -c commit.gpgsign=false -c user.name=Reproducer -c user.email=reproducer@example.invalid commit -m "Initialize reproducer"
+```
+
+From the root of the checkout:
 
 ```sh
 mvn verify -f ddk-parent/pom.xml --batch-mode --fail-at-end
