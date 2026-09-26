@@ -21,6 +21,8 @@ import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.xtext.common.types.JvmGenericType;
 import org.eclipse.xtext.common.types.TypesFactory;
+import org.eclipse.xtext.common.types.access.ClasspathTypeProviderFactory;
+import org.eclipse.xtext.common.types.access.impl.TypeResourceServices;
 import org.eclipse.xtext.naming.QualifiedName;
 import org.eclipse.xtext.resource.EObjectDescription;
 import org.eclipse.xtext.resource.IEObjectDescription;
@@ -37,8 +39,9 @@ import com.avaloq.tools.ddk.xtext.test.jupiter.AbstractXtextTest;
 
 
 /**
- * Tests that the classes named in {@code extension} declarations are dependencies of an export model: a change to such a
- * class must make the model affected.
+ * Tests that the Java types an export model refers to by name, in {@code extension} declarations and in expressions, are
+ * dependencies of the model, and that the Java types referenced by its inferred JVM model are recorded in the form in which
+ * changed Java types are reported: a change to such a type must make the model affected.
  */
 @SuppressWarnings("nls")
 public class ExportResourceDescriptionManagerTest extends AbstractXtextTest {
@@ -56,6 +59,11 @@ public class ExportResourceDescriptionManagerTest extends AbstractXtextTest {
 
   private static final String MODEL_WITHOUT_EXTENSION = ECORE_IMPORT + ECLASS_EXPORT;
 
+  /** Fully qualified name of a type named in a cast; it need not exist either. */
+  private static final String CAST_TYPE = "com.acme.export.model.Node";
+
+  private static final String MODEL_WITH_CAST = ECORE_IMPORT + "export ecore::EClass as name {\n  data node = (com::acme::^export::model::Node) this;\n}\n";
+
   @Override
   protected ExportTestUtil getXtextTestUtil() {
     return ExportTestUtil.getInstance();
@@ -72,12 +80,7 @@ public class ExportResourceDescriptionManagerTest extends AbstractXtextTest {
   @Test
   public void testExtensionClassIsImportedName() throws IOException {
     final IResourceDescription description = describe(WITH_EXTENSION, MODEL_WITH_EXTENSION);
-    final QualifiedName expected = QualifiedName.create(EXTENSION_CLASS.split("\\.")).toLowerCase();
-    boolean found = false;
-    for (final QualifiedName name : description.getImportedNames()) {
-      found |= expected.equals(name);
-    }
-    assertTrue(found, "The extension class must be an imported name of the export model.");
+    assertTrue(imports(description, EXTENSION_CLASS), "The extension class must be an imported name of the export model.");
   }
 
   @Test
@@ -97,6 +100,43 @@ public class ExportResourceDescriptionManagerTest extends AbstractXtextTest {
     final IResourceDescription candidate = manager.getResourceDescription(resource);
     assertFalse(manager.isAffected(List.of(javaTypeChange(EXTENSION_CLASS)), candidate, new ResourceDescriptionsData(List.of(candidate))),
         "A class the export model does not declare must not affect it.");
+  }
+
+  @Test
+  public void testTypeNamedInExpressionIsImportedName() throws IOException {
+    final XtextResource resource = parse("WithCast", MODEL_WITH_CAST);
+    assertTrue(resource.getErrors().isEmpty(), () -> "The model must parse: " + resource.getErrors());
+    final IResourceDescription.Manager manager = resource.getResourceServiceProvider().getResourceDescriptionManager();
+    final IResourceDescription candidate = manager.getResourceDescription(resource);
+    assertTrue(imports(candidate, CAST_TYPE), "A type named in an expression must be an imported name of the export model.");
+    assertTrue(manager.isAffected(List.of(javaTypeChange(CAST_TYPE)), candidate, new ResourceDescriptionsData(List.of(candidate))),
+        "A change to a type named in an expression must affect the export model.");
+  }
+
+  @Test
+  public void testTypesOfInferredModelAreDotSeparatedImportedNames() throws IOException {
+    final ClassLoader loader = ExportResourceDescriptionManagerTest.class.getClassLoader();
+    final XtextResource resource = getXtextTestUtil().parseWithoutGrammar(getTargetSourceUri("Resolved.export"), MODEL_WITHOUT_EXTENSION, resourceSet -> {
+      resourceSet.setClasspathURIContext(loader);
+      new ClasspathTypeProviderFactory(loader, getXtextTestUtil().get(TypeResourceServices.class)).createTypeProvider(resourceSet);
+    });
+    final IResourceDescription description = resource.getResourceServiceProvider().getResourceDescriptionManager().getResourceDescription(resource);
+    assertTrue(imports(description, "org.eclipse.emf.ecore.EObject"),
+        () -> "Types referenced by the inferred JVM model must be recorded as dot-separated names: " + description.getImportedNames());
+    final QualifiedName singleSegment = QualifiedName.create("org.eclipse.emf.ecore.eobject");
+    for (final QualifiedName name : description.getImportedNames()) {
+      assertFalse(singleSegment.equals(name), "A Java type name must not be recorded as a single segment.");
+    }
+  }
+
+  private static boolean imports(final IResourceDescription description, final String fqn) {
+    final QualifiedName expected = QualifiedName.create(fqn.split("\\.")).toLowerCase();
+    for (final QualifiedName name : description.getImportedNames()) {
+      if (expected.equals(name)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private IResourceDescription describe(final String name, final String source) throws IOException {

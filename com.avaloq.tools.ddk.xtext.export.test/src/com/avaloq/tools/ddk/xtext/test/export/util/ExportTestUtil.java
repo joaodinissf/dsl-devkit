@@ -13,6 +13,7 @@ package com.avaloq.tools.ddk.xtext.test.export.util;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.function.Consumer;
 
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -70,6 +71,26 @@ public final class ExportTestUtil extends AbstractXtextTestUtil {
    *           if the model cannot be parsed
    */
   public XtextResource parseWithoutGrammar(final URI modelUri, final String source) throws IOException {
+    return parseWithoutGrammar(modelUri, source, resourceSet -> {
+      // nothing to set up
+    });
+  }
+
+  /**
+   * Parses an export model from the given source and installs its derived state, like {@link #parseWithoutGrammar(URI, String)},
+   * after preparing the new resource set with the given setup.
+   *
+   * @param modelUri
+   *          the URI of the export model, must not be {@code null}
+   * @param source
+   *          the source of the export model, must not be {@code null}
+   * @param setup
+   *          prepares the resource set before the model is loaded, must not be {@code null}
+   * @return the loaded resource, never {@code null}
+   * @throws IOException
+   *           if the model cannot be parsed
+   */
+  public XtextResource parseWithoutGrammar(final URI modelUri, final String source, final Consumer<XtextResourceSet> setup) throws IOException {
     final URI grammarUri = modelUri.trimFileExtension().appendFileExtension("xtext"); //$NON-NLS-1$
     final Resource grammarResource = new ResourceImpl(grammarUri) {
       @Override
@@ -78,6 +99,7 @@ public final class ExportTestUtil extends AbstractXtextTestUtil {
       }
     };
     final XtextResourceSet resourceSet = getResourceSet();
+    setup.accept(resourceSet);
     resourceSet.getResources().add(grammarResource);
     resourceSet.getURIResourceMap().put(grammarUri, grammarResource);
 
