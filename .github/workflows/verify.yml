@@ -1,321 +1,36 @@
-name: verify
+name: verify-annotation-fixture
 on:
   pull_request:
-
-# Code Scanning needs write access to upload SARIF results for inline annotations.
 permissions:
   contents: read
   security-events: write
-
 jobs:
-  analysis-regression:
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Install validation dependencies
-        run: sudo apt-get update && sudo apt-get install --yes jq libxml2-utils
-      - name: Check report gates and merge semantics
-        run: |
-          bash .github/tests/analysis/run.sh
-          bash .github/tests/analysis/mutations.sh
-          bash .github/tests/analysis/scope.sh
-
-  # Fast, early-fail lint lane: PMD + Checkstyle (+ CPD). Turns red in a few
-  # minutes on any violation, independent of the long build below, so a stray
-  # PMD/Checkstyle issue is reported immediately rather than after `verify`.
-  #
-  # `compile` is in the same invocation as the analysis goals: PMD's
-  # type-resolving rules (e.g. InvalidLogMessageFormat on the SLF4J
-  # trailing-Throwable idiom) need Tycho's aux-classpath, which a fresh `mvn`
-  # does not inherit from a prior step's target/classes.
-  #
-  # Preserve Maven failures and validate every expected report before counting findings.
-  lint:
+  annotations:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 0  # need the PR base commit to diff the changed modules
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Restore Maven dependency cache
-        # Restore-only, mirroring snapshot.yml's producer cache exactly (path and
-        # key are hashed into the cache version — see the maven-verify step).
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-publish-${{ hashFiles('**/pom.xml', '**/*.target') }}
-          restore-keys: ${{ runner.os }}-maven-publish-
-
-      - name: Install XML report validator
-        run: sudo apt-get update && sudo apt-get install --yes libxml2-utils
-
-      - name: Scope static analysis to the PR's changed modules
-        # Injects pmd/cpd/checkstyle skip properties into unchanged module poms and
-        # exports LINT_SCOPE_ARGS (-pl <changed> -am) so only the changed modules and
-        # their upstream deps build (skip-injected deps compile for PMD's type
-        # resolution but are not analysed). Build/config change -> full scan, full
-        # reactor. pull_request only; master/snapshot run a full scan.
-        run: bash .github/scripts/compute-analysis-skip.sh "${{ github.event.pull_request.base.sha }}" lint
-
-      - name: PMD + Checkstyle reports (SARIF)
-        # PMD: SarifRenderer FQCN — emits pmd.sarif.json AND keeps pmd.xml.
-        # Checkstyle: output.format=sarif — SARIF content in checkstyle-result.xml.
-        # CPD is excluded here: the global -Dformat flag uses PMD's Renderer
-        # hierarchy and would ClassCastException CPD's CPDReportRenderer.
-        # `compile` stays: PMD's type-resolving rules need Tycho's aux-classpath.
-        # jgit.dirtyWorkingTree=ignore: the scope step edits poms (see the spotbugs
-        # lane for the rationale; this job releases nothing).
-        # Skipped entirely when the scope step kept no modules (e.g. a docs-only
-        # PR): every module would carry the skip properties, so the compile
-        # output would be unused. The gate below relaxes on the same condition.
-        if: env.LINT_KEPT != '0'
-        run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml ${LINT_SCOPE_ARGS:-} --batch-mode --fail-at-end \
-            compile \
-            pmd:pmd checkstyle:checkstyle \
-            -Dformat=net.sourceforge.pmd.renderers.SarifRenderer \
-            -Dcheckstyle.output.format=sarif \
-            -Djgit.dirtyWorkingTree=ignore
-
-      - name: CPD report (separate invocation — no SARIF support)
-        # CPD has no SARIF renderer; emits cpd.xml only. Run standalone so the
-        # PMD -Dformat flag isn't in scope.
-        # No `compile`: CPD is token-based over src/ and needs neither bytecode
-        # nor the target platform — cpd.xml is identical with and without a
-        # compile pass.
-        # NOTE: the CPD token threshold is governed by pmd.cpd.min in
-        # ddk-parent/pom.xml.
-        # No jgit flag needed: a direct goal invocation runs no lifecycle, so the
-        # build-qualifier's dirty-tree check never executes here.
-        if: env.LINT_KEPT != '0'
-        run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml ${LINT_SCOPE_ARGS:-} --batch-mode --fail-at-end \
-            pmd:cpd-check
-
-      - name: Merge per-module SARIFs (PMD + Checkstyle)
-        if: always()
-        # Merge only expected module reports into one run per analyzer.
-        run: |
-          set -euo pipefail
-          if [ "${LINT_KEPT:-}" = "0" ]; then
-            echo "Scope contains no analysable modules — nothing to lint."
-            exit 0
-          fi
-          source .github/scripts/sarif.sh
-          source_modules=$(sarif_source_modules)
-          merge_sarif pmd.sarif.json .sarif-merged/pmd.sarif "${LINT_EXPECT_REPORTS:-$source_modules}" PMD
-          merge_sarif checkstyle-result.xml .sarif-merged/checkstyle.sarif "${LINT_EXPECT_REPORTS:-$source_modules}" Checkstyle
-
-      - name: Gate on PMD / CPD / Checkstyle violations
-        # Require successful reports from every expected module before counting findings.
-        run: |
-          set -euo pipefail
-          if [ "${LINT_KEPT:-}" = "0" ]; then
-            echo "Scope contains no analysable modules — nothing to lint."
-            exit 0
-          fi
-          source .github/scripts/sarif.sh
-          source_modules=$(sarif_source_modules)
-          cpd_reports=()
-          for mod in ${LINT_EXPECT_REPORTS:-$source_modules}; do
-            validate_sarif "${mod}/target/pmd.sarif.json" PMD
-            validate_sarif "${mod}/target/checkstyle-result.xml" Checkstyle
-            cpd_reports+=("${mod}/target/cpd.xml")
-          done
-          validate_sarif .sarif-merged/pmd.sarif PMD
-          validate_sarif .sarif-merged/checkstyle.sarif Checkstyle
-          if [ ${#cpd_reports[@]} -eq 0 ]; then
-            echo "::error::No expected CPD reports — the analysis silently failed."
-            exit 1
-          fi
-          sarif_total=$(jq -s '[.[].runs[].results[]] | length' \
-            .sarif-merged/pmd.sarif .sarif-merged/checkstyle.sarif)
-          cpd_total=0
-          for report in "${cpd_reports[@]}"; do
-            count=$(cpd_count "$report")
-            cpd_total=$((cpd_total + count))
-          done
-          echo "PMD/Checkstyle SARIF violations: $sarif_total"
-          echo "CPD duplications: $cpd_total"
-          if [ "$sarif_total" != "0" ] || [ "$cpd_total" != "0" ]; then
-            echo "::error::Static analysis found violations (PMD/CPD/Checkstyle)."
-            exit 1
-          fi
-
-      - name: Upload PMD/Checkstyle SARIF to Code Scanning
-        # Skip when nothing was scanned (e.g. a docs-only PR -> all modules skipped):
-        # an empty .sarif-merged would otherwise fail upload-sarif ("No SARIF files").
-        if: ${{ always() && hashFiles('.sarif-merged/pmd.sarif', '.sarif-merged/checkstyle.sarif') != '' }}
-        # Annotation-only, never the gate: a fork PR gets a read-only token and
-        # upload-sarif 403s, which must not red an otherwise-clean lane.
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4  # v3.35.4
-        with:
-          sarif_file: .sarif-merged
-          category: lint
-
-  # SpotBugs is the slow critical-path analysis (the experiments' durable
-  # finding), so it runs in its own parallel lane and never delays `lint`.
-  spotbugs:
-    runs-on: ubuntu-24.04
-    env:
-      MAVEN_OPTS: -Xmx4g
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          fetch-depth: 0  # need the PR base commit to diff the changed modules
-      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Restore Maven dependency cache
-        # Restore-only, mirroring snapshot.yml's producer cache exactly (path and
-        # key are hashed into the cache version — see the maven-verify step).
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-publish-${{ hashFiles('**/pom.xml', '**/*.target') }}
-          restore-keys: ${{ runner.os }}-maven-publish-
-
-      - name: Scope SpotBugs to the PR's changed modules
-        # Injects <spotbugs.skip>true> into unchanged module poms so their analysis is
-        # skipped, and exports SPOTBUGS_SCOPE_ARGS (-pl <changed> -am) so only the
-        # changed modules and their upstream deps build at all (skip-injected deps
-        # compile for the aux-classpath but are not analysed). A build/config change ->
-        # full scan, full reactor. pull_request only; master/snapshot run a full scan.
-        run: bash .github/scripts/compute-analysis-skip.sh "${{ github.event.pull_request.base.sha }}" spotbugs
-
-      - name: SpotBugs report (SARIF)
-        # sarifOutput=true emits spotbugsSarif.json (also writes spotbugsXml.xml).
-        # jgit.dirtyWorkingTree=ignore: the scope step intentionally edits poms, so the
-        # working tree is dirty here; this job releases nothing, so we tell Tycho's jgit
-        # build-qualifier to use the last commit's timestamp instead of failing (the
-        # repo keeps jgit.dirtyWorkingTree=error for maven-verify / releases).
-        # Skipped entirely when the scope step kept no modules (e.g. a docs-only
-        # PR): every module would carry spotbugs.skip, so the compile output
-        # would be unused. The gate below relaxes on the same condition.
-        if: env.SPOTBUGS_KEPT != '0'
-        run: |
-          mvn -T 2C -f ./ddk-parent/pom.xml ${SPOTBUGS_SCOPE_ARGS:-} --batch-mode --fail-at-end \
-            compile \
-            spotbugs:spotbugs \
-            -Dspotbugs.sarifOutput=true \
-            -Djgit.dirtyWorkingTree=ignore
-
-      - name: Merge per-module SpotBugs SARIFs
-        if: always()
-        run: |
-          set -euo pipefail
-          if [ "${SPOTBUGS_KEPT:-}" = "0" ]; then
-            echo "Scope contains no analysable modules — nothing to scan."
-            exit 0
-          fi
-          source .github/scripts/sarif.sh
-          source_modules=$(sarif_source_modules)
-          merge_sarif spotbugsSarif.json .sarif-merged/spotbugs.sarif "${SPOTBUGS_EXPECT_REPORTS:-$source_modules}" SpotBugs
-
-      - name: Gate on SpotBugs violations
-        # Require successful reports from every expected module before counting findings.
-        run: |
-          set -euo pipefail
-          if [ "${SPOTBUGS_KEPT:-}" = "0" ]; then
-            echo "Scope contains no analysable modules — nothing to scan."
-            exit 0
-          fi
-          source .github/scripts/sarif.sh
-          source_modules=$(sarif_source_modules)
-          for mod in ${SPOTBUGS_EXPECT_REPORTS:-$source_modules}; do
-            validate_sarif "${mod}/target/spotbugsSarif.json" SpotBugs
-          done
-          validate_sarif .sarif-merged/spotbugs.sarif SpotBugs
-          sb_total=$(jq '[.runs[].results[]] | length' .sarif-merged/spotbugs.sarif)
-          echo "SpotBugs SARIF violations: $sb_total"
-          if [ "$sb_total" != "0" ]; then
-            echo "::error::SpotBugs found violations."
-            exit 1
-          fi
-
-      - name: Upload SpotBugs SARIF to Code Scanning
-        # Skip when nothing was scanned (e.g. a docs-only PR -> all modules skipped):
-        # an empty .sarif-merged would otherwise fail upload-sarif ("No SARIF files").
-        if: ${{ always() && hashFiles('.sarif-merged/spotbugs.sarif') != '' }}
-        # Annotation-only, never the gate: a fork PR gets a read-only token and
-        # upload-sarif 403s, which must not red an otherwise-clean lane.
-        continue-on-error: true
-        uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4  # v3.35.4
-        with:
-          sarif_file: .sarif-merged
-          category: spotbugs
-
-  line-endings:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-      - name: Check LF line endings
-        run: bash .github/scripts/check-line-endings.sh
-
-  # Build + tests only. Static analysis now lives in the `lint` and `spotbugs`
-  # jobs, so the redundant checkstyle/pmd/spotbugs goals are dropped from here —
-  # this is the wall-clock long pole and no longer re-runs analysis.
-  # No `-T 2C`: tests are not known to pass reliably under reactor parallelism.
-  maven-verify:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
-        with:
-          # Full history: Tycho's jgit build-qualifier derives each bundle's qualifier
-          # from the last commit touching it. A shallow clone truncates that history, so
-          # every bundle falls back to the HEAD (merge-ref) timestamp — inflating all
-          # qualifiers and making compare-version-with-baselines fail on unchanged
-          # bundles ("Only qualifier changed"). snapshot.yml already fetches full history.
           fetch-depth: 0
-      - name: Set up JDK 21
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6  # v6.0.1
+      - name: Merge a real SpotBugs finding with a clean sibling
+        shell: bash
+        run: |
+          set -euo pipefail
+          source .github/scripts/sarif.sh
+          mkdir -p .validation-fixture/a/target .validation-fixture/b/target
+          cp .github/tests/analysis/fixtures/spotbugs-clean.json .validation-fixture/a/target/spotbugsSarif.json
+          jq --arg root "file://${GITHUB_WORKSPACE}/.github/tests/analysis/annotation-source/" \
+            '.runs[].originalUriBaseIds[] |= (.uri = $root)' \
+            .github/tests/analysis/fixtures/spotbugs-finding.json > .validation-fixture/b/target/spotbugsSarif.json
+          merge_sarif spotbugsSarif.json .sarif-merged/spotbugs.sarif '.validation-fixture/a .validation-fixture/b' SpotBugs
+          validate_sarif .sarif-merged/spotbugs.sarif SpotBugs
+          test "$(jq '[.runs[].results[]] | length' .sarif-merged/spotbugs.sarif)" = 2
+          jq -e 'all(.runs[].results[].locations[].physicalLocation.artifactLocation;
+            .uri == ".github/tests/analysis/annotation-source/com/example/Example.java"
+            and (has("uriBaseId") | not))' .sarif-merged/spotbugs.sarif
+          git rev-parse HEAD
+      - name: Upload real findings and require successful processing
+        uses: github/codeql-action/upload-sarif@7fd177fa680c9881b53cdab4d346d32574c9f7f4
         with:
-          distribution: 'temurin'
-          java-version: '21'
-      - name: Log Maven version
-        run: mvn --version
-      - name: Set up Workspace Environment Variable
-        run: echo "WORKSPACE=${{ github.workspace }}" >> $GITHUB_ENV
-      - name: Restore Maven dependency cache
-        # Restore-only: PR scopes cannot share caches with each other, so per-PR
-        # saves are dead weight that evicts the useful master-scoped caches
-        # (10 GB repo budget). The producer is snapshot.yml on master pushes
-        # (Linux-maven-publish-*). Path and key must mirror snapshot.yml exactly:
-        # the literal path spec is hashed into the cache *version*, so any
-        # variation (~/.m2 vs /home/runner/.m2) makes its caches unmatchable.
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-publish-${{ hashFiles('**/pom.xml', '**/*.target') }}
-          restore-keys: ${{ runner.os }}-maven-publish-
-      - name: Drop cached p2 metadata for the DDK update site
-        # The restored blob persists Tycho's HTTP cache (~/.m2/repository/.cache/tycho).
-        # Tycho's cache-first transport never revalidates cached 404/301 entries, and
-        # p2/releases/latest + p2/snapshots/latest are moving pointers, so a stale blob
-        # silently disables the compare-version-with-baselines gate (the mojo has no
-        # "baseline not found" branch and passes vacuously). Deleting only the DDK hosts
-        # forces a fresh metadata fetch (a few KB) while keeping eclipse.org metadata and
-        # all downloaded artifacts cached.
-        run: rm -rf ~/.m2/repository/.cache/tycho/https/dsldevkit.github.io ~/.m2/repository/.cache/tycho/https/ddk.tools.avaloq.com
-      - name: Build with Maven  within a virtual X Server Environment
-        run: xvfb-run mvn clean verify -f ./ddk-parent/pom.xml --batch-mode --fail-at-end
-      - name: Fail on missing surefire reports
-        if: always()
-        run: bash .github/scripts/check-surefire-reports.sh
-      - name: Archive Tycho Surefire Plugin
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7
-        with:
-          name: tycho-surefire-plugin
-          path: ${{ env.GITHUB_WORKSPACE }}/com.avaloq.tools.ddk.xtext.test/target/work/data/.metadata/.log
+          sarif_file: .sarif-merged/spotbugs.sarif
+          category: validation-real-spotbugs
+          wait-for-processing: true
